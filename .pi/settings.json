@@ -1,0 +1,7 @@
+{
+  "packages": [
+    "..",
+    "npm:@tmustier/pi-usage-extension",
+    "npm:@tmustier/pi-raw-paste"
+  ]
+}
