@@ -1,29 +1,29 @@
 # Same-focus preset: every Reviewer applies the identical correctness lens.
 # Reviewer tools default to read, grep, find, and ls.
 reviewers:
-  - name: correctness-a
+  - name: alpha
     model: openai-codex/gpt-5.6-luna
     thinking: high
     systemPrompt: >-
       Evaluate factual and technical correctness. Identify false claims,
       invalid reasoning, and conclusions that are not supported by evidence.
 
-  - name: correctness-b
-    model: google/gemini-3.5-flash
+  - name: gamma
+    model: google/gemini-3.6-flash
     thinking: high
     systemPrompt: >-
       Evaluate factual and technical correctness. Identify false claims,
       invalid reasoning, and conclusions that are not supported by evidence.
 
-  - name: correctness-c
-    model: opencode/deepseek-v4-flash-free
+  - name: delta
+    model: deepseek/deepseek-v4-flash
     thinking: high
     systemPrompt: >-
       Evaluate factual and technical correctness. Identify false claims,
       invalid reasoning, and conclusions that are not supported by evidence.
 
 chair:
-  model: openai-codex/gpt-5.6-sol
+  model: openai-codex/gpt-5.6-terra
   thinking: high
   systemPrompt: >-
     Prefer verifiable claims and preserve important caveats. Be concise where

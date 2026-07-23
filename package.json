@@ -10,12 +10,14 @@
   ],
   "pi": {
     "extensions": [
-      "./packages/pi-reviewer-chair/src/index.ts"
+      "./packages/pi-reviewer-chair/src/index.ts",
+      "./packages/pi-usage-codex/src/index.ts",
+      "./packages/pi-usage-deepseek/src/index.ts"
     ]
   },
   "scripts": {
     "check": "npm run typecheck && npm test && npm run pack:check",
-    "pack:check": "npm pack --dry-run --json ./packages/pi-reviewer-chair",
+    "pack:check": "npm pack --dry-run --json ./packages/pi-reviewer-chair ./packages/pi-usage-codex ./packages/pi-usage-deepseek",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

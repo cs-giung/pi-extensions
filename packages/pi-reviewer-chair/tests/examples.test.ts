@@ -2,12 +2,19 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseReviewerChairConfig } from "../src/config.js";
 
-const DEFAULT_REVIEWER_MODELS = [
-  "openai-codex/gpt-5.6-luna",
-  "google/gemini-3.5-flash",
-  "opencode/deepseek-v4-flash-free",
-];
-const DEFAULT_CHAIR_MODEL = "openai-codex/gpt-5.6-sol";
+const DEFAULT_REVIEWER_MODELS_BY_PRESET = {
+  "reviewer-chair.example.yaml": [
+    "openai-codex/gpt-5.6-luna",
+    "google/gemini-3.6-flash",
+    "opencode/deepseek-v4-flash-free",
+  ],
+  "reviewer-chair.same-focus.example.yaml": [
+    "openai-codex/gpt-5.6-luna",
+    "google/gemini-3.6-flash",
+    "deepseek/deepseek-v4-flash",
+  ],
+};
+const DEFAULT_CHAIR_MODEL = "openai-codex/gpt-5.6-terra";
 
 describe("packaged configuration examples", () => {
   it("keeps distinct additional prompts in the diverse-focus preset", () => {
@@ -36,17 +43,14 @@ describe("packaged configuration examples", () => {
     expect(prompts[0]).toMatch(/factual and technical correctness/i);
   });
 
-  it("uses the configured default model roster in both presets", () => {
-    for (const filename of [
-      "reviewer-chair.example.yaml",
-      "reviewer-chair.same-focus.example.yaml",
-    ]) {
+  it("uses the configured default model roster in each preset", () => {
+    for (const [filename, reviewerModels] of Object.entries(
+      DEFAULT_REVIEWER_MODELS_BY_PRESET,
+    )) {
       const source = readFileSync(new URL(`../.pi/${filename}`, import.meta.url), "utf8");
       const config = parseReviewerChairConfig(source);
 
-      expect(config.reviewers.map((reviewer) => reviewer.model)).toEqual(
-        DEFAULT_REVIEWER_MODELS,
-      );
+      expect(config.reviewers.map((reviewer) => reviewer.model)).toEqual(reviewerModels);
       expect(config.chair.model).toBe(DEFAULT_CHAIR_MODEL);
     }
   });

@@ -1,12 +1,14 @@
 # Pi extensions
 
-This repository contains one personal Pi package and the project configuration for two third-party packages. It keeps the local extension code, package choices, examples, and verification commands together without copying third-party source code.
+This repository contains three personal Pi packages and project configuration for two third-party packages. It keeps local extension code, package choices, examples, and verification commands together.
 
 ## Included packages
 
 | Source | Commands | Purpose |
 | --- | --- | --- |
 | `packages/pi-reviewer-chair` | `/council`, `/council-reviews`, `/council-copy` | Run independent Reviewers, synthesize a Chair answer, and copy the latest result. |
+| `packages/pi-usage-codex` | — | Show the active Codex or Spark subscription quota windows. |
+| `packages/pi-usage-deepseek` | — | Show the current DeepSeek account balance. |
 | `npm:@tmustier/pi-usage-extension` | `/usage` | Display the interactive historical usage dashboard. |
 | `npm:@tmustier/pi-raw-paste` | `/paste` | Arm a one-shot raw paste so large clipboard contents remain fully visible and editable instead of being condensed into paste markers. |
 
@@ -15,11 +17,13 @@ This repository contains one personal Pi package and the project configuration f
 ```text
 .pi/settings.json                    Project-local Pi package list
 packages/pi-reviewer-chair/          Personal Reviewer–Chair package
+packages/pi-usage-codex/             Personal Codex quota status package
+packages/pi-usage-deepseek/          Personal DeepSeek balance status package
 packages/pi-reviewer-chair/.pi/      Example Reviewer–Chair configurations
 package.json                         Root Pi package and development commands
 ```
 
-The root Pi manifest loads `packages/pi-reviewer-chair/src/index.ts`. `.pi/settings.json` loads that root package and both npm packages when Pi runs in this repository.
+The root Pi manifest loads all three local packages. `.pi/settings.json` loads that root package and both npm packages when Pi runs in this repository.
 
 ## Setup
 
@@ -29,7 +33,7 @@ Node.js 22.19 or newer and Pi are required. Install the local package dependenci
 npm install
 ```
 
-Start Pi in this repository and trust the project when prompted. Pi then installs the missing project npm packages and loads all three extensions.
+Start Pi in this repository and trust the project when prompted. Pi then installs the missing project npm packages and loads all five extensions.
 
 Before running `/council`, create a project configuration from one of the examples:
 
@@ -45,15 +49,17 @@ Run `/paste` immediately before a normal terminal paste to keep the next clipboa
 
 ### Optional user-wide installation
 
-To load these extensions from directories outside this repository, install each package in the user scope:
+To load the extensions independently outside this repository, install each package from its directory:
 
 ```bash
-pi install ~/pi-extensions
+pi install ~/pi-extensions/packages/pi-reviewer-chair
+pi install ~/pi-extensions/packages/pi-usage-codex
+pi install ~/pi-extensions/packages/pi-usage-deepseek
 pi install npm:@tmustier/pi-usage-extension
 pi install npm:@tmustier/pi-raw-paste
 ```
 
-The local package remains linked to this repository; run `/reload` after changing its code. `/council` reads `.pi/reviewer-chair.yaml` from the directory where Pi is running, so each project may keep a separate council configuration.
+The local packages remain linked to this repository; run `/reload` after changing their code. `/council` reads `.pi/reviewer-chair.yaml` from the directory where Pi is running, so each project may keep a separate council configuration.
 
 ## Maintenance
 
@@ -63,7 +69,7 @@ Update third-party packages with Pi's package manager rather than editing its np
 pi update --extensions
 ```
 
-Validate the personal package after changing code or configuration examples:
+Validate all personal packages after changing code or configuration examples:
 
 ```bash
 npm run check

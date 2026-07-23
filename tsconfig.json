@@ -14,6 +14,10 @@
   "include": [
     "packages/pi-reviewer-chair/src/**/*.ts",
     "packages/pi-reviewer-chair/tests/**/*.ts",
+    "packages/pi-usage-codex/src/**/*.ts",
+    "packages/pi-usage-codex/tests/**/*.ts",
+    "packages/pi-usage-deepseek/src/**/*.ts",
+    "packages/pi-usage-deepseek/tests/**/*.ts",
     "vitest.config.ts"
   ]
 }

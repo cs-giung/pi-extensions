@@ -1,21 +1,21 @@
 # Diverse-focus preset: each Reviewer examines a different quality dimension.
 # Reviewer tools default to read, grep, find, and ls.
 reviewers:
-  - name: correctness
+  - name: alpha
     model: openai-codex/gpt-5.6-luna
     thinking: high
     systemPrompt: >-
       Evaluate only factual and technical correctness. Identify false claims,
       invalid reasoning, and conclusions that are not supported by evidence.
 
-  - name: completeness
-    model: google/gemini-3.5-flash
+  - name: gamma
+    model: google/gemini-3.6-flash
     thinking: high
     systemPrompt: >-
       Evaluate completeness. Identify missing requirements, edge cases,
       operational details, and unsupported assumptions.
 
-  - name: skeptic
+  - name: delta
     model: opencode/deepseek-v4-flash-free
     thinking: high
     systemPrompt: >-
@@ -23,7 +23,7 @@ reviewers:
       counterexamples and failure modes, and propose safer alternatives.
 
 chair:
-  model: openai-codex/gpt-5.6-sol
+  model: openai-codex/gpt-5.6-terra
   thinking: high
   systemPrompt: >-
     Prefer verifiable claims and preserve important caveats. Be concise where
