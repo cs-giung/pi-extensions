@@ -31,8 +31,11 @@ export async function fetchCodexUsage(
   registry: Registry,
   modelId: string,
   fetchImpl: Fetch = globalThis.fetch,
+  signal?: AbortSignal,
 ): Promise<CodexUsage> {
+  signal?.throwIfAborted();
   const auth = await registry.getProviderAuth(CODEX_PROVIDER);
+  signal?.throwIfAborted();
   const accessToken = auth?.auth.apiKey?.trim();
   if (!accessToken) throw new CodexAuthUnavailableError();
 
@@ -43,7 +46,7 @@ export async function fetchCodexUsage(
       authorization: `Bearer ${accessToken}`,
       "chatgpt-account-id": accountId,
     },
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    signal: AbortSignal.any([AbortSignal.timeout(REQUEST_TIMEOUT_MS), ...(signal ? [signal] : [])]),
   });
 
   if (!response.ok) {

@@ -1,5 +1,9 @@
 node_modules/
 coverage/
+*.tgz
+.env
+.env.*
+!.env.example
 *.tsbuildinfo
 .pi/npm/
 .pi/reviewer-chair.yaml

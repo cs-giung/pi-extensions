@@ -4,13 +4,13 @@ Compact DeepSeek account balance status for [Pi](https://pi.dev/).
 
 ## Behavior
 
-The extension is active only for the `deepseek` provider. It uses Pi's current DeepSeek API key, requests `https://api.deepseek.com/user/balance`, and shows the preferred available balance:
+The extension displays the balance regardless of the active provider, alongside the Codex and Z.ai indicators when installed. It uses Pi's current DeepSeek API key, requests `https://api.deepseek.com/user/balance`, and shows the preferred available balance:
 
 ```text
 deepseek $17.35
 ```
 
-USD is preferred, followed by CNY and then the first returned currency. Missing auth or an unavailable balance is shown as `n/a`; a first-request failure is shown as `error`. A successful value remains visible during transient refresh failures. The status refreshes after model changes and turns, and every 30 seconds while DeepSeek is active.
+USD is preferred, followed by CNY and then the first returned currency. Missing auth hides the indicator; an unavailable balance is shown as `n/a` and a first-request failure as `error`. Cached values are marked `(stale)` during refresh failures. The status refreshes every 30 seconds, regardless of the selected model. Polling runs only with a UI. Session shutdown stops polling and aborts in-flight HTTP requests; late results cannot restore a cleared indicator.
 
 ## Install
 

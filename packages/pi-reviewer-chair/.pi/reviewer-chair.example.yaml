@@ -1,26 +1,31 @@
-# Diverse-focus preset: each Reviewer examines a different quality dimension.
-# Reviewer tools default to read, grep, find, and ls.
 reviewers:
   - name: alpha
     model: openai-codex/gpt-5.6-luna
     thinking: high
     systemPrompt: >-
-      Evaluate only factual and technical correctness. Identify false claims,
+      Evaluate factual and technical correctness. Identify false claims,
       invalid reasoning, and conclusions that are not supported by evidence.
 
   - name: gamma
-    model: google/gemini-3.6-flash
+    model: google/gemini-3.8-flash
     thinking: high
     systemPrompt: >-
-      Evaluate completeness. Identify missing requirements, edge cases,
-      operational details, and unsupported assumptions.
+      Evaluate factual and technical correctness. Identify false claims,
+      invalid reasoning, and conclusions that are not supported by evidence.
 
   - name: delta
-    model: opencode/deepseek-v4-flash-free
+    model: deepseek/deepseek-flash
     thinking: high
     systemPrompt: >-
-      Evaluate adversarial risk. Challenge fragile assumptions, look for
-      counterexamples and failure modes, and propose safer alternatives.
+      Evaluate factual and technical correctness. Identify false claims,
+      invalid reasoning, and conclusions that are not supported by evidence.
+
+  - name: theta
+    model: zai/glm-5.3-flash
+    thinking: high
+    systemPrompt: >-
+      Evaluate factual and technical correctness. Identify false claims,
+      invalid reasoning, and conclusions that are not supported by evidence.
 
 chair:
   model: openai-codex/gpt-5.6-terra
@@ -28,7 +33,6 @@ chair:
   systemPrompt: >-
     Prefer verifiable claims and preserve important caveats. Be concise where
     concision does not reduce completeness.
-  # Omit tools to give the Chair no tools (the default).
 
 minSuccess: 2
 idleTimeoutMs: 120000

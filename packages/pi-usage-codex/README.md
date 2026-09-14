@@ -4,14 +4,14 @@ Compact OpenAI Codex subscription quota status for [Pi](https://pi.dev/).
 
 ## Behavior
 
-The extension is active only for the `openai-codex` provider. It reads Pi's current OAuth credential, requests `https://chatgpt.com/backend-api/wham/usage`, and shows the remaining primary and weekly quota windows:
+The extension displays subscription quota regardless of the active provider, alongside the DeepSeek and Z.ai indicators when installed. It reads Pi's current OAuth credential, requests `https://chatgpt.com/backend-api/wham/usage`, and shows the remaining primary and weekly quota windows:
 
 ```text
 codex 5h 82% · 7d 64% ↺6d22h
 spark 5h 91% · 7d 73% ↺6d22h
 ```
 
-Spark models select the separate Spark quota bucket. Missing subscription auth is shown as `n/a`; a first-request failure is shown as `error`. A successful value remains visible during transient refresh failures. The status refreshes after model changes and turns, and every 30 seconds while Codex is active.
+Active `openai-codex` Spark models select the separate Spark quota bucket; all other models show regular Codex quota. Missing subscription auth hides the indicator; a first-request failure is shown as `error`. Cached values are marked `(stale)` during refresh failures. The status refreshes every 30 seconds and when switching quota buckets. Polling runs only with a UI. Session shutdown and quota-bucket changes abort in-flight HTTP requests; late results cannot overwrite the current indicator.
 
 ## Install
 

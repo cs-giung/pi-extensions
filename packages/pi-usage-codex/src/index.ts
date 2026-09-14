@@ -1,132 +1,83 @@
-import type {
-  ExtensionAPI,
-  ExtensionContext,
-} from "@earendil-works/pi-coding-agent";
-import {
-  CodexAuthUnavailableError,
-  fetchCodexUsage,
-  type CodexUsage,
-} from "./api.js";
-import {
-  formatCodexError,
-  formatCodexStatus,
-  formatCodexUnavailable,
-} from "./format.js";
-
-const PROVIDER = "openai-codex";
-const STATUS_KEY = "usage-codex";
-const REFRESH_INTERVAL_MS = 30_000;
-
-type Model = NonNullable<ExtensionContext["model"]>;
-type UsageLoader = typeof fetchCodexUsage;
-type Timer = NodeJS.Timeout;
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { CodexAuthUnavailableError, fetchCodexUsage, type CodexUsage } from "./api.js";
+import { formatCodexError, formatCodexStatus } from "./format.js";
 
 export interface CodexUsageExtensionOptions {
-  loadUsage?: UsageLoader;
+  loadUsage?: typeof fetchCodexUsage;
   refreshIntervalMs?: number;
 }
 
-export default function codexUsageExtension(
-  pi: ExtensionAPI,
-  options: CodexUsageExtensionOptions = {},
-): void {
+export default function codexUsageExtension(pi: ExtensionAPI, options: CodexUsageExtensionOptions = {}): void {
   const loadUsage = options.loadUsage ?? fetchCodexUsage;
-  const refreshIntervalMs = options.refreshIntervalMs ?? REFRESH_INTERVAL_MS;
   let context: ExtensionContext | undefined;
-  let activeModel: Model | undefined;
-  let revision = 0;
-  let timer: Timer | undefined;
-  let inFlight: Promise<CodexUsage> | undefined;
-  let cached: { modelId: string; usage: CodexUsage } | undefined;
+  let modelId = "codex";
+  let generation = 0;
+  let timer: NodeJS.Timeout | undefined;
+  let inFlight = false;
+  let activeRequest: AbortController | undefined;
+  let cached: CodexUsage | undefined;
+  const key = "usage-codex";
 
-  const clear = (ctx: ExtensionContext): void => {
-    if (ctx.hasUI) ctx.ui.setStatus(STATUS_KEY, undefined);
-  };
-
-  const refresh = async (force = false): Promise<void> => {
+  const refresh = async (): Promise<void> => {
     const ctx = context;
-    const model = activeModel;
-    const requestRevision = revision;
-    if (!ctx?.hasUI) return;
-    if (model?.provider !== PROVIDER) {
-      clear(ctx);
-      return;
-    }
-
-    if (!force && cached?.modelId === model.id) {
-      ctx.ui.setStatus(STATUS_KEY, formatCodexStatus(cached.usage, ctx.ui.theme));
-      return;
-    }
-    if (inFlight) return;
-
-    const request = loadUsage(ctx.modelRegistry, model.id);
-    inFlight = request;
+    if (!ctx?.hasUI || inFlight) return;
+    const revision = generation;
+    inFlight = true;
+    const request = new AbortController();
+    activeRequest = request;
     try {
-      const usage = await request;
-      cached = { modelId: model.id, usage };
-      if (context !== ctx || revision !== requestRevision) return;
-      ctx.ui.setStatus(STATUS_KEY, formatCodexStatus(usage, ctx.ui.theme));
+      const usage = await loadUsage(ctx.modelRegistry, modelId, undefined, request.signal);
+      if (revision !== generation || !context) return;
+      cached = usage;
+      context.ui.setStatus(key, formatCodexStatus(usage, context.ui.theme));
     } catch (error) {
-      if (context !== ctx || revision !== requestRevision) return;
-      if (cached?.modelId === model.id) {
-        ctx.ui.setStatus(STATUS_KEY, formatCodexStatus(cached.usage, ctx.ui.theme));
-      } else if (error instanceof CodexAuthUnavailableError) {
-        const label = model.id.toLowerCase().includes("spark") ? "spark" : "codex";
-        ctx.ui.setStatus(STATUS_KEY, formatCodexUnavailable(label, ctx.ui.theme));
+      if (revision !== generation || !context) return;
+      if (error instanceof CodexAuthUnavailableError) {
+        cached = undefined;
+        context.ui.setStatus(key, undefined);
       } else {
-        const label = model.id.toLowerCase().includes("spark") ? "spark" : "codex";
-        ctx.ui.setStatus(STATUS_KEY, formatCodexError(label, ctx.ui.theme));
+        context.ui.setStatus(key, cached
+          ? `${formatCodexStatus(cached, context.ui.theme)} ${context.ui.theme.fg("dim", "(stale)")}`
+          : formatCodexError(modelId.includes("spark") ? "spark" : "codex", context.ui.theme));
       }
     } finally {
-      if (inFlight === request) {
-        inFlight = undefined;
-        if (revision !== requestRevision && activeModel?.provider === PROVIDER) void refresh(true);
-      }
+      activeRequest = undefined;
+      inFlight = false;
+      if (revision !== generation && context) void refresh();
     }
   };
 
-  const selectModel = (ctx: ExtensionContext, model: Model | undefined): void => {
+  const select = (ctx: ExtensionContext, model = ctx.model): void => {
     context = ctx;
-    activeModel = model;
-    revision += 1;
-    if (model?.provider !== PROVIDER) {
-      clear(ctx);
-      return;
-    }
-    if (cached?.modelId === model.id) {
-      ctx.ui.setStatus(STATUS_KEY, formatCodexStatus(cached.usage, ctx.ui.theme));
-    }
-    void refresh();
-  };
-
-  pi.on("session_start", (_event, ctx) => {
-    clearInterval(timer);
-    selectModel(ctx, ctx.model);
-    timer = setInterval(() => void refresh(true), refreshIntervalMs) as Timer;
-    timer.unref?.();
-  });
-
-  pi.on("model_select", (event, ctx) => selectModel(ctx, event.model));
-
-  pi.on("turn_end", (_event, ctx) => {
-    if (modelKey(activeModel) !== modelKey(ctx.model)) {
-      selectModel(ctx, ctx.model);
-    } else {
-      context = ctx;
+    // Keep the regular subscription visible on every provider; Spark has its own bucket.
+    const next = model?.provider === "openai-codex" && model.id.toLowerCase().includes("spark")
+      ? model.id : "codex";
+    if (next !== modelId) {
+      modelId = next;
+      generation += 1;
+      activeRequest?.abort();
+      cached = undefined;
+      if (ctx.hasUI) ctx.ui.setStatus(key, undefined);
       void refresh();
     }
+  };
+  pi.on("session_start", (_event, ctx) => {
+    select(ctx);
+    clearInterval(timer);
+    if (!ctx.hasUI) return;
+    void refresh();
+    timer = setInterval(() => void refresh(), options.refreshIntervalMs ?? 30_000);
+    timer.unref();
   });
-
+  pi.on("model_select", (event, ctx) => select(ctx, event.model));
+  pi.on("turn_end", (_event, ctx) => select(ctx));
   pi.on("session_shutdown", (_event, ctx) => {
     clearInterval(timer);
     timer = undefined;
     context = undefined;
-    activeModel = undefined;
-    revision += 1;
-    clear(ctx);
+    cached = undefined;
+    generation += 1;
+    activeRequest?.abort();
+    if (ctx.hasUI) ctx.ui.setStatus(key, undefined);
   });
-}
-
-function modelKey(model: Model | undefined): string | undefined {
-  return model ? `${model.provider}/${model.id}` : undefined;
 }

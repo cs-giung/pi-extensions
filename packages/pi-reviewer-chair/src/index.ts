@@ -69,7 +69,7 @@ export default function reviewerChairExtension(
   pi.registerCommand("council-copy", {
     description: "Copy the most recent Chair answer to the clipboard",
     handler: async (_args, ctx) => {
-      const answer = findLastChairAnswer(ctx.sessionManager.getEntries());
+      const answer = findLastChairAnswer(ctx.sessionManager.getBranch());
       if (!answer) {
         ctx.ui.notify("No Chair answer is available. Run /council first.", "warning");
         return;
@@ -99,6 +99,11 @@ export default function reviewerChairExtension(
       }
       if (running) {
         ctx.ui.notify("A council run is already in progress.", "warning");
+        return;
+      }
+
+      if (!ctx.isProjectTrusted()) {
+        ctx.ui.notify("Trust this project before running /council with its local configuration.", "warning");
         return;
       }
 

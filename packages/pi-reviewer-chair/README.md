@@ -4,14 +4,14 @@ A minimal Reviewer–Chair extension for Pi. `/council <prompt>` sends the same 
 
 ## Setup
 
-Node.js 22.19 or newer and Pi are required. From the `pi-extensions` repository root, install dependencies and copy one example:
+Node.js 22.19 or newer and Pi are required. From the `pi-extensions` repository root, install dependencies and copy the example:
 
 ```bash
 npm install
 cp packages/pi-reviewer-chair/.pi/reviewer-chair.example.yaml .pi/reviewer-chair.yaml
 ```
 
-Use `reviewer-chair.same-focus.example.yaml` instead when every Reviewer should independently check the same correctness criteria. Edit the copied configuration with `provider/model-id` values and additional prompts appropriate for the environment.
+The example uses four independent Reviewers with identical correctness criteria. Customize their prompts if you prefer different review focuses. Edit the copied configuration with `provider/model-id` values and additional prompts appropriate for the environment.
 
 The repository's `.pi/settings.json` loads this package automatically after the project is trusted. For user-wide access from other directories, run `pi install ~/pi-extensions`. Model authentication comes from the existing Pi configuration.
 
@@ -27,7 +27,7 @@ The repository's `.pi/settings.json` loads this package automatically after the 
 
 `model` uses the `provider/model-id` format. Reviewers receive `read`, `grep`, `find`, and `ls` by default. The Chair receives no tools by default. Update the example model IDs for the installed Pi model catalog and authentication environment.
 
-Both example presets use Reviewer 1 `openai-codex/gpt-5.6-luna`, Reviewer 2 `google/gemini-3.5-flash`, Reviewer 3 `opencode/deepseek-v4-flash-free`, and Chair `openai-codex/gpt-5.6-sol`.
+The example uses `openai-codex/gpt-5.6-luna`, `google/gemini-3.8-flash`, `deepseek/deepseek-flash`, and `zai/glm-5.3-flash` as Reviewers, with `openai-codex/gpt-5.6-terra` as Chair. At least two Reviewers must succeed.
 
 The fixed Reviewer instructions require every concern to use a `- [CRITICAL|HIGH|MEDIUM|LOW]` item with evidence, impact, and a fix. The Chair merges semantically equivalent concerns, labels each as `COMMON` or `EXCLUSIVE`, reports each anonymous Reviewer's severity, assigns a synthesized Chair severity and fix, and ends with the final answer. A YAML `systemPrompt` appends extra instructions; it does not replace this fixed contract.
 
@@ -46,7 +46,9 @@ Only the Chair's final answer is added to the main conversation. Supporting comm
 /council-copy      Copy the latest successful Chair answer to the clipboard
 ```
 
-Pi's built-in `/copy` targets normal Assistant messages. Chair answers are extension messages, so use `/council-copy` for them.
+`/council` only reads project configuration in a trusted project. Timeout values must not exceed `2147483647` milliseconds (Node's timer limit).
+
+`/council-copy` searches the active branch, so it does not copy an answer from an abandoned `/tree` branch. Pi's built-in `/copy` targets normal Assistant messages. Chair answers are extension messages, so use `/council-copy` for them.
 
 The command chooses the clipboard transport automatically: `pbcopy` on local macOS, `clip` on native Windows, `clip.exe` in local WSL, `tmux load-buffer -w` inside tmux, OSC 52 over SSH or Mosh, and Pi's clipboard utility elsewhere. Its notification names the selected transport.
 

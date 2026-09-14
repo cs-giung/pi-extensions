@@ -6,6 +6,9 @@ import { z } from "zod";
 export const CONFIG_RELATIVE_PATH = ".pi/reviewer-chair.yaml";
 export const DEFAULT_REVIEWER_TOOLS = ["read", "grep", "find", "ls"] as const;
 
+// Node clamps larger timer delays to 1 ms rather than waiting longer.
+const timeoutSchema = z.number().int().positive().max(2_147_483_647);
+
 const thinkingSchema = z.enum(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
 const modelSchema = z
   .string()
@@ -36,8 +39,8 @@ export const reviewerChairConfigSchema = z
     reviewers: z.array(reviewerSchema).min(1),
     chair: chairSchema,
     minSuccess: z.number().int().positive(),
-    idleTimeoutMs: z.number().int().positive().default(120_000),
-    maxDurationMs: z.number().int().positive().default(900_000),
+    idleTimeoutMs: timeoutSchema.default(120_000),
+    maxDurationMs: timeoutSchema.default(900_000),
   })
   .strict()
   .superRefine((config, context) => {

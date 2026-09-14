@@ -54,7 +54,7 @@ describe("pi-usage-deepseek", () => {
     expect(formatDeepSeekStatus(usage, theme)).toBe("deepseek $4.25");
   });
 
-  it("loads on session start and clears when the provider changes", async () => {
+  it("loads on another provider and remains visible when the provider changes", async () => {
     const handlers: Partial<Record<string, Handler>> = {};
     const setStatus = vi.fn();
     const usage: DeepSeekUsage = {
@@ -67,7 +67,7 @@ describe("pi-usage-deepseek", () => {
         handlers[name] = handler;
       },
     } as unknown as ExtensionAPI;
-    const model = { provider: "deepseek", id: "deepseek-v4-pro" };
+    const model = { provider: "anthropic", id: "test" };
     const ctx = {
       hasUI: true,
       model,
@@ -83,7 +83,7 @@ describe("pi-usage-deepseek", () => {
     ));
 
     handlers.model_select?.({ model: { provider: "openai-codex", id: "gpt-5.6-sol" } }, ctx);
-    expect(setStatus).toHaveBeenLastCalledWith("usage-deepseek", undefined);
+    expect(setStatus).toHaveBeenLastCalledWith("usage-deepseek", "deepseek $17.35");
     handlers.session_shutdown?.({}, ctx);
   });
 });

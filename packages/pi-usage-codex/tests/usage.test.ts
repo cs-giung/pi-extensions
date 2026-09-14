@@ -68,7 +68,7 @@ describe("pi-usage-codex", () => {
     expect(formatCodexStatus(usage, theme, now)).toBe("spark 5h 91% · 7d 73% ↺2d3h");
   });
 
-  it("loads on session start and clears when the provider changes", async () => {
+  it("loads on another provider and remains visible when the provider changes", async () => {
     const handlers: Partial<Record<string, Handler>> = {};
     const setStatus = vi.fn();
     const usage: CodexUsage = {
@@ -82,7 +82,7 @@ describe("pi-usage-codex", () => {
         handlers[name] = handler;
       },
     } as unknown as ExtensionAPI;
-    const model = { provider: "openai-codex", id: "gpt-5.6-sol" };
+    const model = { provider: "anthropic", id: "test" };
     const ctx = {
       hasUI: true,
       model,
@@ -98,7 +98,7 @@ describe("pi-usage-codex", () => {
     ));
 
     handlers.model_select?.({ model: { provider: "deepseek", id: "deepseek-v4-pro" } }, ctx);
-    expect(setStatus).toHaveBeenLastCalledWith("usage-codex", undefined);
+    expect(setStatus).toHaveBeenLastCalledWith("usage-codex", "codex 5h 80% · 7d 60%");
     handlers.session_shutdown?.({}, ctx);
   });
 });

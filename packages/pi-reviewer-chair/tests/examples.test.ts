@@ -5,19 +5,15 @@ import { parseReviewerChairConfig } from "../src/config.js";
 const DEFAULT_REVIEWER_MODELS_BY_PRESET = {
   "reviewer-chair.example.yaml": [
     "openai-codex/gpt-5.6-luna",
-    "google/gemini-3.6-flash",
-    "opencode/deepseek-v4-flash-free",
-  ],
-  "reviewer-chair.same-focus.example.yaml": [
-    "openai-codex/gpt-5.6-luna",
-    "google/gemini-3.6-flash",
-    "deepseek/deepseek-v4-flash",
+    "google/gemini-3.8-flash",
+    "deepseek/deepseek-flash",
+    "zai/glm-5.3-flash",
   ],
 };
 const DEFAULT_CHAIR_MODEL = "openai-codex/gpt-5.6-terra";
 
 describe("packaged configuration examples", () => {
-  it("keeps distinct additional prompts in the diverse-focus preset", () => {
+  it("uses four independent reviewers with the same correctness focus", () => {
     const source = readFileSync(
       new URL("../.pi/reviewer-chair.example.yaml", import.meta.url),
       "utf8",
@@ -25,20 +21,8 @@ describe("packaged configuration examples", () => {
     const config = parseReviewerChairConfig(source);
     const prompts = config.reviewers.map((reviewer) => reviewer.systemPrompt);
 
-    expect(config.reviewers).toHaveLength(3);
-    expect(new Set(prompts).size).toBe(3);
-    expect(prompts.every((prompt) => prompt.length > 0)).toBe(true);
-  });
-
-  it("uses one identical additional prompt in the same-focus preset", () => {
-    const source = readFileSync(
-      new URL("../.pi/reviewer-chair.same-focus.example.yaml", import.meta.url),
-      "utf8",
-    );
-    const config = parseReviewerChairConfig(source);
-    const prompts = config.reviewers.map((reviewer) => reviewer.systemPrompt);
-
-    expect(config.reviewers).toHaveLength(3);
+    expect(config.reviewers).toHaveLength(4);
+    expect(new Set(config.reviewers.map((reviewer) => reviewer.name)).size).toBe(4);
     expect(new Set(prompts).size).toBe(1);
     expect(prompts[0]).toMatch(/factual and technical correctness/i);
   });

@@ -7,7 +7,6 @@
   "files": [
     "src",
     ".pi/reviewer-chair.example.yaml",
-    ".pi/reviewer-chair.same-focus.example.yaml",
     "LICENSE",
     "README.md"
   ],
@@ -32,10 +31,10 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "0.83.0",
+    "@earendil-works/pi-coding-agent": "0.85.1",
     "@types/node": "^24.10.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.8"
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=22.19.0"

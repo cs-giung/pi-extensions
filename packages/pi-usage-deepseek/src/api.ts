@@ -30,8 +30,11 @@ export async function fetchDeepSeekUsage(
   registry: Registry,
   _modelId: string,
   fetchImpl: Fetch = globalThis.fetch,
+  signal?: AbortSignal,
 ): Promise<DeepSeekUsage> {
+  signal?.throwIfAborted();
   const apiKey = (await registry.getApiKeyForProvider(DEEPSEEK_PROVIDER))?.trim();
+  signal?.throwIfAborted();
   if (!apiKey) throw new DeepSeekAuthUnavailableError();
 
   const response = await fetchImpl(DEEPSEEK_BALANCE_URL, {
@@ -39,7 +42,7 @@ export async function fetchDeepSeekUsage(
       accept: "application/json",
       authorization: `Bearer ${apiKey}`,
     },
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    signal: AbortSignal.any([AbortSignal.timeout(REQUEST_TIMEOUT_MS), ...(signal ? [signal] : [])]),
   });
 
   if (!response.ok) {
@@ -65,7 +68,7 @@ export function parseDeepSeekUsage(payload: unknown): DeepSeekUsage {
       throw new Error("DeepSeek balance response contained an invalid balance");
     }
     return {
-      currency: currency.toUpperCase(),
+      currency: currency.trim().toUpperCase(),
       total,
       granted,
       toppedUp,

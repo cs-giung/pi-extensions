@@ -40,10 +40,22 @@ describe("Reviewer Chair extension", () => {
     );
     expect(sendMessage).not.toHaveBeenCalled();
 
+    await commands.get("council")?.handler("Review this project", {
+      isProjectTrusted: () => false,
+      ui: { notify },
+    } as unknown as ExtensionCommandContext);
+    expect(notify).toHaveBeenCalledWith(
+      "Trust this project before running /council with its local configuration.",
+      "warning",
+    );
+
     const copyNotify = vi.fn();
     await commands.get("council-copy")?.handler("", {
       sessionManager: {
         getEntries: () => [
+          { type: "custom_message", customType: "reviewer-chair-final", content: "Abandoned branch" },
+        ],
+        getBranch: () => [
           { type: "custom_message", customType: "reviewer-chair-final", content: "Older" },
           { type: "custom_message", customType: "other", content: "Ignore" },
           { type: "custom_message", customType: "reviewer-chair-final", content: "Latest" },
@@ -53,6 +65,7 @@ describe("Reviewer Chair extension", () => {
     } as unknown as ExtensionCommandContext);
 
     expect(copyText).toHaveBeenCalledWith("Latest");
+    expect(copyText).not.toHaveBeenCalledWith("Abandoned branch");
     expect(copyNotify).toHaveBeenCalledWith(
       "Copied the most recent Chair answer via macOS pbcopy.",
       "info",

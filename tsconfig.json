@@ -18,6 +18,9 @@
     "packages/pi-usage-codex/tests/**/*.ts",
     "packages/pi-usage-deepseek/src/**/*.ts",
     "packages/pi-usage-deepseek/tests/**/*.ts",
+    "packages/pi-usage-zai/src/**/*.ts",
+    "packages/pi-usage-zai/tests/**/*.ts",
+    "tests/**/*.ts",
     "vitest.config.ts"
   ]
 }

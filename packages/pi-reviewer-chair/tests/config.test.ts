@@ -97,6 +97,16 @@ minSuccess: 1
     ).toThrowError(/provider\/model-id/);
   });
 
+  it.each(["idleTimeoutMs", "maxDurationMs"])("rejects overflowing %s timers", (field) => {
+    expect(() => parseReviewerChairConfig(`${minimalConfig}\n${field}: 2147483648`))
+      .toThrowError(/2147483647/);
+  });
+
+  it("accepts the maximum supported timer delay", () => {
+    expect(parseReviewerChairConfig(`${minimalConfig}\nmaxDurationMs: 2147483647`).maxDurationMs)
+      .toBe(2_147_483_647);
+  });
+
   it("rejects a maximum duration shorter than the idle timeout", () => {
     expect(() =>
       parseReviewerChairConfig(`

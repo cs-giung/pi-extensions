@@ -1,0 +1,69 @@
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { ZaiAuthUnavailableError, fetchZaiUsage, type ZaiUsage } from "./api.js";
+import { formatZaiError, formatZaiStatus } from "./format.js";
+
+export interface ZaiUsageExtensionOptions {
+  loadUsage?: typeof fetchZaiUsage;
+  refreshIntervalMs?: number;
+}
+
+export default function zaiUsageExtension(pi: ExtensionAPI, options: ZaiUsageExtensionOptions = {}): void {
+  const loadUsage = options.loadUsage ?? fetchZaiUsage;
+  let context: ExtensionContext | undefined;
+  let generation = 0;
+  let timer: NodeJS.Timeout | undefined;
+  let inFlight = false;
+  let activeRequest: AbortController | undefined;
+  let cached: ZaiUsage | undefined;
+  const key = "usage-zai";
+
+  const refresh = async (): Promise<void> => {
+    const ctx = context;
+    if (!ctx?.hasUI || inFlight) return;
+    const revision = generation;
+    inFlight = true;
+    const request = new AbortController();
+    activeRequest = request;
+    try {
+      const usage = await loadUsage(ctx.modelRegistry, undefined, request.signal);
+      if (revision !== generation || !context) return;
+      cached = usage;
+      context.ui.setStatus(key, formatZaiStatus(usage, context.ui.theme));
+    } catch (error) {
+      if (revision !== generation || !context) return;
+      if (error instanceof ZaiAuthUnavailableError) {
+        cached = undefined;
+        context.ui.setStatus(key, undefined);
+
+      } else {
+        context.ui.setStatus(key, cached
+          ? `${formatZaiStatus(cached, context.ui.theme)} ${context.ui.theme.fg("dim", "(stale)")}`
+          : formatZaiError(context.ui.theme));
+      }
+    } finally {
+      activeRequest = undefined;
+      inFlight = false;
+      if (revision !== generation && context) void refresh();
+    }
+  };
+
+  pi.on("session_start", (_event, ctx) => {
+    context = ctx;
+    clearInterval(timer);
+    if (!ctx.hasUI) return;
+    void refresh();
+    timer = setInterval(() => void refresh(), options.refreshIntervalMs ?? 30_000);
+    timer.unref();
+  });
+  pi.on("model_select", (_event, ctx) => { context = ctx; });
+  pi.on("turn_end", (_event, ctx) => { context = ctx; });
+  pi.on("session_shutdown", (_event, ctx) => {
+    clearInterval(timer);
+    timer = undefined;
+    context = undefined;
+    cached = undefined;
+    generation += 1;
+    activeRequest?.abort();
+    if (ctx.hasUI) ctx.ui.setStatus(key, undefined);
+  });
+}

@@ -12,12 +12,13 @@
     "extensions": [
       "./packages/pi-reviewer-chair/src/index.ts",
       "./packages/pi-usage-codex/src/index.ts",
-      "./packages/pi-usage-deepseek/src/index.ts"
+      "./packages/pi-usage-deepseek/src/index.ts",
+      "./packages/pi-usage-zai/src/index.ts"
     ]
   },
   "scripts": {
     "check": "npm run typecheck && npm test && npm run pack:check",
-    "pack:check": "npm pack --dry-run --json ./packages/pi-reviewer-chair ./packages/pi-usage-codex ./packages/pi-usage-deepseek",
+    "pack:check": "npm pack --dry-run --json ./packages/pi-reviewer-chair ./packages/pi-usage-codex ./packages/pi-usage-deepseek ./packages/pi-usage-zai",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -29,10 +30,10 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "0.83.0",
+    "@earendil-works/pi-coding-agent": "0.85.1",
     "@types/node": "^24.10.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.8"
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=22.19.0"
