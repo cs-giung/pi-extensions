@@ -29,7 +29,7 @@ The root Pi manifest loads all four local packages. `.pi/settings.json` loads th
 
 ## Setup
 
-Node.js 22.19 or newer and Pi are required. Install the local package dependencies:
+Node.js 22.19 or newer is required. These extensions are developed and tested against Pi v1.0.3. Install the local package dependencies:
 
 ```bash
 npm install
@@ -37,7 +37,7 @@ npm install
 
 Start Pi in this repository and trust the project when prompted. Pi then installs the missing project npm packages and loads all six extensions.
 
-The Codex, DeepSeek, and Z.ai footer indicators appear together whenever their Pi credentials are configured, regardless of the selected model. They refresh every 30 seconds. Missing credentials hide the corresponding indicator; transient failures mark cached values `(stale)`. Z.ai displays the available pay-as-you-go monetary balance, not Coding Plan quota. Configure `ZAI_API_KEY` or authenticate the `zai` provider through Pi.
+The Codex, DeepSeek, and Z.ai footer indicators appear together whenever their Pi credentials are configured, regardless of the selected model. They refresh every 30 seconds. Codex supports both legacy `openai-codex` credentials and ChatGPT sign-in through `/login openai`; OpenAI API keys are not subscription credentials. Missing credentials hide the corresponding indicator; transient failures mark cached values `(stale)`. Z.ai displays the available pay-as-you-go monetary balance, not Coding Plan quota. Configure `ZAI_API_KEY` or authenticate the `zai` provider through Pi.
 
 Before running `/council`, create a project configuration from the example:
 

@@ -4,7 +4,7 @@ import { parseReviewerChairConfig } from "../src/config.js";
 
 const DEFAULT_REVIEWER_MODELS_BY_PRESET = {
   "reviewer-chair.example.yaml": [
-    "openai-codex/gpt-5.6-luna",
+    "openai-codex/gpt-6-luna",
     "google/gemini-3.8-flash",
     "deepseek/deepseek-flash",
     "zai/glm-5.3-flash",

@@ -41,7 +41,7 @@ it("shows all three providers together on an unrelated model", async () => {
   expect(vi.getTimerCount()).toBe(0);
 });
 
-it("cancels regular Codex requests when selecting Spark and restores regular quota on other providers", async () => {
+it.each(["openai-codex", "openai"])("cancels regular Codex requests when selecting %s Spark and restores regular quota on other providers", async (provider) => {
   vi.useFakeTimers();
   const handlers: Record<string, Handler> = {};
   const ctx = createContext();
@@ -58,7 +58,7 @@ it("cancels regular Codex requests when selecting Spark and restores regular quo
   codexExtension({ on: (name: string, handler: Handler) => { handlers[name] = handler; } } as unknown as ExtensionAPI,
     { loadUsage: load });
   handlers.session_start?.({} as never, ctx);
-  handlers.model_select?.({ model: { provider: "openai-codex", id: "test-spark" } } as never, ctx);
+  handlers.model_select?.({ model: { provider, id: "test-spark" } } as never, ctx);
   expect(firstSignal?.aborted).toBe(true);
   await vi.advanceTimersByTimeAsync(0);
   expect(load.mock.calls[1]?.[1]).toBe("test-spark");

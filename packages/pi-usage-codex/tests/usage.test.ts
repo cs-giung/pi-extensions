@@ -2,6 +2,7 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { describe, expect, it, vi } from "vitest";
 import codexUsageExtension from "../src/index.js";
 import {
+  CodexAuthUnavailableError,
   extractAccountId,
   fetchCodexUsage,
   parseCodexUsage,
@@ -25,9 +26,10 @@ describe("pi-usage-codex", () => {
       },
     }), { status: 200 }));
 
-    const usage = await fetchCodexUsage({
-      getProviderAuth: vi.fn(async () => ({ auth: { apiKey: token }, source: "OAuth" })),
-    }, "gpt-5.6-sol", request as typeof fetch);
+    const getProviderAuth = vi.fn(async () => ({ auth: { apiKey: token }, source: "OAuth" }));
+    const usage = await fetchCodexUsage({ getProviderAuth }, "gpt-5.6-sol", request as typeof fetch);
+
+    expect(getProviderAuth).toHaveBeenCalledExactlyOnceWith("openai-codex");
 
     expect(extractAccountId(token)).toBe("acct-123");
     expect(request).toHaveBeenCalledWith(
@@ -44,6 +46,68 @@ describe("pi-usage-codex", () => {
       primary: { usedPercent: 18, windowSeconds: 18_000 },
       secondary: { usedPercent: 36 },
     });
+  });
+
+  it.each([undefined, "invalid-token"])(
+    "falls back to OpenAI ChatGPT OAuth when legacy auth is %s",
+    async (legacyToken) => {
+      const token = jwtWithAccount("chatgpt-account");
+      const getProviderAuth = vi.fn(async (provider: string) => provider === "openai"
+        ? { auth: { apiKey: token }, source: "OAuth" }
+        : legacyToken ? { auth: { apiKey: legacyToken }, source: "OAuth" } : undefined);
+      const request = vi.fn(async () => new Response(JSON.stringify({
+        rate_limit: { primary_window: { used_percent: 25 } },
+      })));
+
+      const usage = await fetchCodexUsage({ getProviderAuth }, "codex", request as typeof fetch);
+
+      expect(getProviderAuth.mock.calls).toEqual([["openai-codex"], ["openai"]]);
+      expect(request).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
+        headers: expect.objectContaining({
+          authorization: `Bearer ${token}`,
+          "chatgpt-account-id": "chatgpt-account",
+        }),
+      }));
+      expect(usage.primary?.usedPercent).toBe(25);
+    },
+  );
+
+  it.each(["stored", "OPENAI_API_KEY", undefined])(
+    "never sends an OpenAI API key to ChatGPT (source: %s)",
+    async (source) => {
+      const getProviderAuth = vi.fn(async (provider: string) => provider === "openai"
+        ? { auth: { apiKey: jwtWithAccount("not-subscription-auth") }, ...(source ? { source } : {}) }
+        : undefined);
+      const request = vi.fn();
+
+      await expect(fetchCodexUsage({ getProviderAuth }, "codex", request)).rejects.toBeInstanceOf(
+        CodexAuthUnavailableError,
+      );
+      expect(request).not.toHaveBeenCalled();
+    },
+  );
+
+  it("hides missing or invalid subscription credentials without requesting usage", async () => {
+    const request = vi.fn();
+    const getProviderAuth = vi.fn(async () => ({ auth: { apiKey: "invalid-token" }, source: "OAuth" }));
+    await expect(fetchCodexUsage({ getProviderAuth }, "codex", request)).rejects.toBeInstanceOf(
+      CodexAuthUnavailableError,
+    );
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("does not fetch if cancelled while resolving the OpenAI fallback", async () => {
+    const controller = new AbortController();
+    const getProviderAuth = vi.fn(async (provider: string) => {
+      if (provider !== "openai") return undefined;
+      controller.abort();
+      return { auth: { apiKey: jwtWithAccount("chatgpt-account") }, source: "OAuth" };
+    });
+    const request = vi.fn();
+    await expect(fetchCodexUsage(
+      { getProviderAuth }, "codex", request, controller.signal,
+    )).rejects.toThrow();
+    expect(request).not.toHaveBeenCalled();
   });
 
   it("selects Spark's additional bucket and formats compact remaining quota", () => {

@@ -50,7 +50,8 @@ export default function codexUsageExtension(pi: ExtensionAPI, options: CodexUsag
   const select = (ctx: ExtensionContext, model = ctx.model): void => {
     context = ctx;
     // Keep the regular subscription visible on every provider; Spark has its own bucket.
-    const next = model?.provider === "openai-codex" && model.id.toLowerCase().includes("spark")
+    const next = (model?.provider === "openai-codex" || model?.provider === "openai")
+      && model.id.toLowerCase().includes("spark")
       ? model.id : "codex";
     if (next !== modelId) {
       modelId = next;

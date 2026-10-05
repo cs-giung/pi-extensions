@@ -1,6 +1,6 @@
 import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 
-const CODEX_PROVIDER = "openai-codex";
+const SUBSCRIPTION_PROVIDERS = ["openai-codex", "openai"] as const;
 const CODEX_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage";
 const OPENAI_AUTH_CLAIM = "https://api.openai.com/auth";
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -33,13 +33,7 @@ export async function fetchCodexUsage(
   fetchImpl: Fetch = globalThis.fetch,
   signal?: AbortSignal,
 ): Promise<CodexUsage> {
-  signal?.throwIfAborted();
-  const auth = await registry.getProviderAuth(CODEX_PROVIDER);
-  signal?.throwIfAborted();
-  const accessToken = auth?.auth.apiKey?.trim();
-  if (!accessToken) throw new CodexAuthUnavailableError();
-
-  const accountId = extractAccountId(accessToken);
+  const { accessToken, accountId } = await resolveSubscriptionAuth(registry, signal);
   const response = await fetchImpl(CODEX_USAGE_URL, {
     headers: {
       accept: "application/json",
@@ -55,6 +49,27 @@ export async function fetchCodexUsage(
 
   const payload: unknown = await response.json();
   return parseCodexUsage(payload, modelId, Date.now());
+}
+
+async function resolveSubscriptionAuth(
+  registry: Registry,
+  signal?: AbortSignal,
+): Promise<{ accessToken: string; accountId: string }> {
+  for (const provider of SUBSCRIPTION_PROVIDERS) {
+    signal?.throwIfAborted();
+    const auth = await registry.getProviderAuth(provider);
+    signal?.throwIfAborted();
+    // The new OpenAI provider also accepts API keys, which must never be sent to ChatGPT.
+    if (provider === "openai" && auth?.source !== "OAuth") continue;
+    const accessToken = auth?.auth.apiKey?.trim();
+    if (!accessToken) continue;
+    try {
+      return { accessToken, accountId: extractAccountId(accessToken) };
+    } catch (error) {
+      if (!(error instanceof CodexAuthUnavailableError)) throw error;
+    }
+  }
+  throw new CodexAuthUnavailableError();
 }
 
 export function extractAccountId(accessToken: string): string {
