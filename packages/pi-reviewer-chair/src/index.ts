@@ -13,6 +13,8 @@ import { loadReviewerChairConfig } from "./config.js";
 import { runReviewers } from "./reviewer-runner.js";
 import { formatReviewerProgress, type ReviewerProgressView } from "./progress.js";
 import { formatReviewReport, type ReviewReport } from "./review-report.js";
+import { checkCouncilModels } from "./preflight.js";
+import { findLastReviewReport, REPORT_ENTRY_TYPE } from "./report-state.js";
 
 const STATUS_KEY = "reviewer-chair";
 
@@ -29,14 +31,47 @@ export default function reviewerChairExtension(
   copyText: (text: string) => Promise<ClipboardCopyResult> = copyTextPortable,
 ): void {
   let running = false;
-  let lastReviewReport: ReviewReport | undefined;
   let activeRun: AbortController | undefined;
 
-  pi.on("session_shutdown", () => {
+  pi.on("session_shutdown", (_event, ctx) => {
     const run = activeRun;
     activeRun = undefined;
     running = false;
     run?.abort();
+    ctx.ui.setStatus(STATUS_KEY, undefined);
+  });
+
+  pi.registerCommand("council-cancel", {
+    description: "Cancel the active Council run, including queued reviewers",
+    handler: async (_args, ctx) => {
+      if (!activeRun || activeRun.signal.aborted) {
+        ctx.ui.notify("No active Council run to cancel.", "info");
+        return;
+      }
+      activeRun.abort();
+      ctx.ui.notify("Council cancellation requested. Waiting for active sessions to stop.", "info");
+    },
+  });
+
+  pi.registerCommand("council-check", {
+    description: "Validate Council configuration and model access without starting model runs",
+    handler: async (_args, ctx) => {
+      if (!ctx.isProjectTrusted()) {
+        ctx.ui.notify("Trust this project before checking its local Council configuration.", "warning");
+        return;
+      }
+      try {
+        const config = await loadReviewerChairConfig(ctx.cwd);
+        const runtime = await ModelRuntime.create({ allowModelNetwork: false });
+        checkCouncilModels(config, runtime);
+        ctx.ui.notify(
+          `Council configuration is valid: ${config.reviewers.length} reviewers, minimum ${config.minSuccess} successes, concurrency ${config.maxConcurrency}. No model runs were started.`,
+          "info",
+        );
+      } catch (error) {
+        ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
+      }
+    },
   });
 
   pi.registerCommand("council-reviews", {
@@ -46,6 +81,7 @@ export default function reviewerChairExtension(
         ctx.ui.notify("The Council is still running. Reviewer responses are not ready yet.", "warning");
         return;
       }
+      const lastReviewReport = findLastReviewReport(ctx.sessionManager.getBranch());
       if (!lastReviewReport) {
         ctx.ui.notify("No completed Reviewer run is available. Run /council first.", "warning");
         return;
@@ -113,8 +149,9 @@ export default function reviewerChairExtension(
       const parentSession = ctx.sessionManager.getSessionFile();
       try {
         const config = await loadReviewerChairConfig(ctx.cwd);
-        const modelRuntime = await ModelRuntime.create();
+        const modelRuntime = await ModelRuntime.create({ signal: runController.signal, allowModelNetwork: false });
         if (runController.signal.aborted) return;
+        checkCouncilModels(config, modelRuntime);
 
         const reviewerProgress: ReviewerProgressView[] = config.reviewers.map((reviewer, index) => ({
           label: reviewer.name ?? `Reviewer ${index + 1}`,
@@ -144,11 +181,12 @@ export default function reviewerChairExtension(
         );
         if (runController.signal.aborted) return;
 
-        lastReviewReport = {
+        const report: ReviewReport = {
           prompt,
           successes: reviewResult.successes,
           failures: reviewResult.failures,
         };
+        pi.appendEntry(REPORT_ENTRY_TYPE, { version: 1, report });
 
         if (reviewResult.failures.length > 0) {
           const failures = reviewResult.failures

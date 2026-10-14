@@ -5,6 +5,12 @@ import { z } from "zod";
 
 export const CONFIG_RELATIVE_PATH = ".pi/reviewer-chair.yaml";
 export const DEFAULT_REVIEWER_TOOLS = ["read", "grep", "find", "ls"] as const;
+// Nested sessions disable extensions, so only built-in tools can be selected.
+export const COUNCIL_TOOL_NAMES = ["read", "bash", "powershell", "edit", "write", "grep", "find", "ls"] as const;
+const toolsSchema = z.array(z.enum(COUNCIL_TOOL_NAMES)).refine(
+  (tools) => new Set(tools).size === tools.length,
+  "must not contain duplicate tools",
+);
 
 // Node clamps larger timer delays to 1 ms rather than waiting longer.
 const timeoutSchema = z.number().int().positive().max(2_147_483_647);
@@ -21,7 +27,7 @@ const reviewerSchema = z
     model: modelSchema,
     thinking: thinkingSchema.default("medium"),
     systemPrompt: z.string().trim().default(""),
-    tools: z.array(z.string().trim().min(1)).default([...DEFAULT_REVIEWER_TOOLS]),
+    tools: toolsSchema.default([...DEFAULT_REVIEWER_TOOLS]),
   })
   .strict();
 
@@ -30,7 +36,7 @@ const chairSchema = z
     model: modelSchema,
     thinking: thinkingSchema.default("high"),
     systemPrompt: z.string().trim().default(""),
-    tools: z.array(z.string().trim().min(1)).default([]),
+    tools: toolsSchema.default([]),
   })
   .strict();
 
@@ -39,6 +45,7 @@ export const reviewerChairConfigSchema = z
     reviewers: z.array(reviewerSchema).min(1),
     chair: chairSchema,
     minSuccess: z.number().int().positive(),
+    maxConcurrency: z.number().int().positive().default(4),
     idleTimeoutMs: timeoutSchema.default(120_000),
     maxDurationMs: timeoutSchema.default(900_000),
   })

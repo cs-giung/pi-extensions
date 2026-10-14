@@ -10,7 +10,9 @@ The extension displays the balance regardless of the active provider, alongside 
 deepseek $17.35
 ```
 
-USD is preferred, followed by CNY and then the first returned currency. Missing auth hides the indicator; an unavailable balance is shown as `n/a` and a first-request failure as `error`. Cached values are marked `(stale)` during refresh failures. The status refreshes every 30 seconds, regardless of the selected model. Polling runs only with a UI. Session shutdown stops polling and aborts in-flight HTTP requests; late results cannot restore a cleared indicator.
+USD is preferred, followed by CNY and then the first returned currency. Missing auth hides the indicator; an unavailable balance is shown as `n/a` and a first-request failure as `error`. Cached values are marked `(stale)` during refresh failures. The status normally refreshes 30 seconds after each completed request, regardless of the selected model. Failures use exponential backoff with jitter, capped at five minutes, and honor longer `Retry-After` delays. Missing credentials retain the normal interval; successful requests reset the backoff. Polling runs only with a UI. Session shutdown stops polling and aborts in-flight HTTP requests; late results cannot restore a cleared indicator.
+
+Run `/usage-deepseek-status` to see the last successful refresh, safe error category (HTTP status, parsing, or network/credential resolution), consecutive failures, and next scheduled refresh. Diagnostics do not expose API keys, headers, response bodies, or arbitrary credential errors.
 
 ## Install
 

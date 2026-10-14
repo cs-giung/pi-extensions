@@ -7,6 +7,18 @@ export class ZaiAuthUnavailableError extends Error {
   constructor() { super("Z.ai API key is unavailable"); this.name = "ZaiAuthUnavailableError"; }
 }
 
+export class ZaiUsageHttpError extends Error {
+  readonly retryAfterMs: number;
+
+  constructor(readonly status: number, retryAfter: string | null) {
+    super(`Z.ai balance request failed with HTTP ${status}`);
+    this.name = "ZaiUsageHttpError";
+    const seconds = retryAfter?.trim() ? Number(retryAfter) : NaN;
+    const delay = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(retryAfter ?? "") - Date.now();
+    this.retryAfterMs = Number.isFinite(delay) ? Math.min(2_147_483_647, Math.max(0, delay)) : 0;
+  }
+}
+
 export async function fetchZaiUsage(
   registry: Pick<ModelRegistry, "getApiKeyForProvider">,
   fetchImpl: typeof fetch = globalThis.fetch,
@@ -20,7 +32,7 @@ export async function fetchZaiUsage(
     headers: { accept: "application/json", authorization: `Bearer ${apiKey}` },
     signal: AbortSignal.any([AbortSignal.timeout(15_000), ...(signal ? [signal] : [])]),
   });
-  if (!response.ok) throw new Error(`Z.ai balance request failed with HTTP ${response.status}`);
+  if (!response.ok) throw new ZaiUsageHttpError(response.status, response.headers.get("retry-after"));
   return parseZaiUsage(await response.json());
 }
 

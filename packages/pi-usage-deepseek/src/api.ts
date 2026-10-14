@@ -23,6 +23,18 @@ export class DeepSeekAuthUnavailableError extends Error {
   }
 }
 
+export class DeepSeekUsageHttpError extends Error {
+  readonly retryAfterMs: number;
+
+  constructor(readonly status: number, retryAfter: string | null) {
+    super(`DeepSeek balance request failed with HTTP ${status}`);
+    this.name = "DeepSeekUsageHttpError";
+    const seconds = retryAfter?.trim() ? Number(retryAfter) : NaN;
+    const delay = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(retryAfter ?? "") - Date.now();
+    this.retryAfterMs = Number.isFinite(delay) ? Math.min(2_147_483_647, Math.max(0, delay)) : 0;
+  }
+}
+
 type Fetch = typeof globalThis.fetch;
 type Registry = Pick<ModelRegistry, "getApiKeyForProvider">;
 
@@ -46,7 +58,7 @@ export async function fetchDeepSeekUsage(
   });
 
   if (!response.ok) {
-    throw new Error(`DeepSeek balance request failed with HTTP ${response.status}`);
+    throw new DeepSeekUsageHttpError(response.status, response.headers.get("retry-after"));
   }
 
   return parseDeepSeekUsage(await response.json());

@@ -27,7 +27,9 @@ Authorization: Bearer <API key>
 
 This global Z.ai endpoint was verified with API-key authentication. It is an undocumented account-report endpoint and may change. BigModel China and team-scoped accounts are not supported.
 
-The indicator refreshes every 30 seconds alongside Codex and DeepSeek, even when another provider is selected. Missing credentials hide it. Initial request/API errors show `zai error`; transient failures preserve the previous value with `(stale)`. Requests have a 15-second HTTP timeout. No polling occurs without a UI; shutdown stops polling, aborts in-flight HTTP requests, and suppresses late results.
+The indicator normally refreshes 30 seconds after each completed request alongside Codex and DeepSeek, even when another provider is selected. Failures use exponential backoff with jitter, capped at five minutes, and honor longer `Retry-After` delays. Missing credentials retain the normal interval; successful requests reset the backoff. Missing credentials hide it. Initial request/API errors show `zai error`; transient failures preserve the previous value with `(stale)`. Requests have a 15-second HTTP timeout. No polling occurs without a UI; shutdown stops polling, aborts in-flight HTTP requests, and suppresses late results.
+
+Run `/usage-zai-status` to see the last successful refresh, safe error category (HTTP status, parsing, or network/credential resolution), consecutive failures, and next scheduled refresh. Diagnostics do not expose API keys, headers, response bodies, or arbitrary credential errors.
 
 ## Development
 

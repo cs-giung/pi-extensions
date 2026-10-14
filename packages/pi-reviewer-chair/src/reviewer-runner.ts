@@ -59,8 +59,12 @@ export async function runReviewers(
   signal?: AbortSignal,
   parentSession?: string,
 ): Promise<ReviewerRunResult> {
-  const settled = await Promise.allSettled(
-    config.reviewers.map(async (reviewer, index) => {
+  const results: PromiseSettledResult<string>[] = [];
+  let nextIndex = 0;
+  const runNext = async (): Promise<void> => {
+    while (nextIndex < config.reviewers.length && !signal?.aborted) {
+      const index = nextIndex++;
+      const reviewer = config.reviewers[index]!;
       onProgress?.({ index, phase: "starting" });
       try {
         const systemPrompt = buildReviewerSystemPrompt(reviewer.systemPrompt);
@@ -77,18 +81,29 @@ export async function runReviewers(
           signal,
         });
         onProgress?.({ index, phase: "completed" });
-        return content;
+        results[index] = { status: "fulfilled", value: content };
       } catch (error) {
         onProgress?.({ index, phase: "failed" });
-        throw error;
+        results[index] = { status: "rejected", reason: error };
       }
-    }),
-  );
+    }
+  };
+  await Promise.all(Array.from(
+    { length: Math.min(config.maxConcurrency, config.reviewers.length) },
+    () => runNext(),
+  ));
+  // Account for queued reviewers without creating sessions after cancellation.
+  for (let index = 0; index < config.reviewers.length; index += 1) {
+    results[index] ??= {
+      status: "rejected",
+      reason: new SessionExecutionError("cancelled", "Agent run was cancelled before starting"),
+    };
+  }
 
   const successes: ReviewerSuccess[] = [];
   const failures: ReviewerFailure[] = [];
 
-  settled.forEach((result, index) => {
+  results.forEach((result, index) => {
     if (result.status === "fulfilled") {
       successes.push({ index, content: result.value });
       return;

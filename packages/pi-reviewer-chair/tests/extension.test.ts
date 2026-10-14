@@ -26,11 +26,12 @@ describe("Reviewer Chair extension", () => {
     } as unknown as ExtensionAPI;
     reviewerChairExtension(extensionApi, copyText);
 
-    expect([...commands.keys()]).toEqual(["council-reviews", "council-copy", "council"]);
+    expect([...commands.keys()]).toEqual(["council-cancel", "council-check", "council-reviews", "council-copy", "council"]);
     expect(on).toHaveBeenCalledWith("session_shutdown", expect.any(Function));
 
     const notify = vi.fn();
     await commands.get("council-reviews")?.handler("", {
+      sessionManager: { getBranch: () => [] },
       ui: { notify },
     } as unknown as ExtensionCommandContext);
 

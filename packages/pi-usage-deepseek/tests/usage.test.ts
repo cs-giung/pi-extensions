@@ -63,6 +63,7 @@ describe("pi-usage-deepseek", () => {
     };
     const loadUsage = vi.fn(async () => usage);
     const pi = {
+      registerCommand: vi.fn(),
       on: (name: string, handler: Handler) => {
         handlers[name] = handler;
       },

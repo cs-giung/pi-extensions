@@ -24,6 +24,18 @@ export class CodexAuthUnavailableError extends Error {
   }
 }
 
+export class CodexUsageHttpError extends Error {
+  readonly retryAfterMs: number;
+
+  constructor(readonly status: number, retryAfter: string | null) {
+    super(`Codex usage request failed with HTTP ${status}`);
+    this.name = "CodexUsageHttpError";
+    const seconds = retryAfter?.trim() ? Number(retryAfter) : NaN;
+    const delay = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(retryAfter ?? "") - Date.now();
+    this.retryAfterMs = Number.isFinite(delay) ? Math.min(2_147_483_647, Math.max(0, delay)) : 0;
+  }
+}
+
 type Fetch = typeof globalThis.fetch;
 type Registry = Pick<ModelRegistry, "getProviderAuth">;
 
@@ -44,7 +56,7 @@ export async function fetchCodexUsage(
   });
 
   if (!response.ok) {
-    throw new Error(`Codex usage request failed with HTTP ${response.status}`);
+    throw new CodexUsageHttpError(response.status, response.headers.get("retry-after"));
   }
 
   const payload: unknown = await response.json();

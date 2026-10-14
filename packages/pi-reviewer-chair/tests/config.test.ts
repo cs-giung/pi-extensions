@@ -24,6 +24,7 @@ describe("parseReviewerChairConfig", () => {
     expect(config.chair.thinking).toBe("high");
     expect(config.idleTimeoutMs).toBe(120_000);
     expect(config.maxDurationMs).toBe(900_000);
+    expect(config.maxConcurrency).toBe(4);
   });
 
   it("preserves per-reviewer and Chair settings", () => {
@@ -76,6 +77,19 @@ chair:
 minSuccess: 2
 `),
     ).toThrowError(/minSuccess.*must not exceed/i);
+  });
+
+  it.each([0, -1, 1.5])("rejects invalid concurrency %s", (value) => {
+    expect(() => parseReviewerChairConfig(`${minimalConfig}\nmaxConcurrency: ${value}`)).toThrowError(ConfigurationError);
+  });
+
+  it("preserves an explicit concurrency limit", () => {
+    expect(parseReviewerChairConfig(`${minimalConfig}\nmaxConcurrency: 1`).maxConcurrency).toBe(1);
+  });
+
+  it.each(["[unknown]", "[codemode]", "[read, read]"])("rejects unsupported or duplicate tools %s", (tools) => {
+    expect(() => parseReviewerChairConfig(minimalConfig.replace("model: anthropic/reviewer", `model: anthropic/reviewer\n    tools: ${tools}`)))
+      .toThrowError(ConfigurationError);
   });
 
   it("rejects malformed YAML and unknown settings", () => {

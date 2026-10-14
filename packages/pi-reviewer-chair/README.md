@@ -11,7 +11,7 @@ npm install
 cp packages/pi-reviewer-chair/.pi/reviewer-chair.example.yaml .pi/reviewer-chair.yaml
 ```
 
-The example uses four independent Reviewers with identical correctness criteria. Customize their prompts if you prefer different review focuses. Edit the copied configuration with `provider/model-id` values and additional prompts appropriate for the environment.
+The example uses independent Reviewers with identical correctness criteria. Their number and model choices can change without changing the example tests. Customize their prompts if you prefer different review focuses. Edit the copied configuration with `provider/model-id` values and additional prompts appropriate for the environment.
 
 The repository's `.pi/settings.json` loads this package automatically after the project is trusted. For user-wide access from other directories, run `pi install ~/pi-extensions`. Model authentication comes from the existing Pi configuration.
 
@@ -22,12 +22,13 @@ The repository's `.pi/settings.json` loads this package automatically after the 
 - `reviewers`: One or more Reviewers. Each entry may set `model`, `thinking`, `systemPrompt`, and `tools`.
 - `chair`: The Chair's `model`, `thinking`, `systemPrompt`, and `tools` settings.
 - `minSuccess`: Minimum number of successful Reviewer responses required to run the Chair.
-- `idleTimeoutMs`: Maximum inactivity after the last Reviewer or Chair event, in milliseconds. The default is `120000`. Model, message, tool, retry, and other session events reset this timer.
-- `maxDurationMs`: Absolute limit for one Reviewer or Chair run regardless of activity, in milliseconds. The default is `900000`.
+- `maxConcurrency`: Maximum number of active Reviewer sessions. The default is `4`. Queued Reviewers start when a slot becomes available; the Chair starts only after all Reviewers settle.
+- `idleTimeoutMs`: Maximum inactivity after the last Reviewer or Chair event during its prompt, in milliseconds. The default is `120000`. Model, message, tool, retry, and other session events reset this timer.
+- `maxDurationMs`: Absolute limit for each Reviewer or Chair prompt regardless of activity, in milliseconds. The default is `900000`. Queueing and session setup are excluded. This is not a deadline for the entire Council.
 
-`model` uses the `provider/model-id` format. Reviewers receive `read`, `grep`, `find`, and `ls` by default. The Chair receives no tools by default. Update the example model IDs for the installed Pi model catalog and authentication environment.
+`model` uses the `provider/model-id` format. Reviewers receive `read`, `grep`, `find`, and `ls` by default. The Chair receives no tools by default. Nested sessions disable extensions, so `tools` accepts only built-ins: `read`, `bash`, `powershell`, `edit`, `write`, `grep`, `find`, and `ls`. Unknown and duplicate tool names are rejected. Only enable file-mutating tools when intended, especially with parallel Reviewers.
 
-The example uses `openai-codex/gpt-5.6-luna`, `google/gemini-3.8-flash`, `deepseek/deepseek-flash`, and `zai/glm-5.3-flash` as Reviewers, with `openai-codex/gpt-5.6-terra` as Chair. At least two Reviewers must succeed.
+Update the example model IDs for the installed Pi model catalog and authentication environment. The YAML file is the source of truth for the current model roster. The extension uses a fresh SDK model runtime and does not load extension-provided models or tools in child sessions.
 
 The fixed Reviewer instructions require every concern to use a `- [CRITICAL|HIGH|MEDIUM|LOW]` item with evidence, impact, and a fix. The Chair merges semantically equivalent concerns, labels each as `COMMON` or `EXCLUSIVE`, reports each anonymous Reviewer's severity, assigns a synthesized Chair severity and fix, and ends with the final answer. A YAML `systemPrompt` appends extra instructions; it does not replace this fixed contract.
 
@@ -42,11 +43,15 @@ Start Pi, then run:
 Only the Chair's final answer is added to the main conversation. Supporting commands:
 
 ```text
-/council-reviews   Show anonymous Reviewer responses from the latest run
+/council-check     Validate configuration and model availability without inference
+/council-cancel    Cancel active agents and prevent queued Reviewers from starting
+/council-reviews   Show anonymous Reviewer responses from the latest run on this branch
 /council-copy      Copy the latest successful Chair answer to the clipboard
 ```
 
-`/council` only reads project configuration in a trusted project. Timeout values must not exceed `2147483647` milliseconds (Node's timer limit).
+`/council` and `/council-check` only read project configuration in a trusted project. Before any inference, all configured models, including the Chair, must exist and be available in the SDK runtime's authentication snapshot. Invalid configuration fails fast instead of spending tokens on Reviewers first. Runtime provider failures still count toward `minSuccess`. These checks do not verify live provider health or guarantee quota; credential resolution may refresh authentication, but neither check starts model inference. Timeout values must not exceed `2147483647` milliseconds (Node's timer limit).
+
+`/council-cancel` requests cancellation and keeps the run locked until active child sessions finish cleanup. A cancelled run does not publish a late Chair answer or start queued Reviewers.
 
 `/council-copy` searches the active branch, so it does not copy an answer from an abandoned `/tree` branch. Pi's built-in `/copy` targets normal Assistant messages. Chair answers are extension messages, so use `/council-copy` for them.
 
@@ -60,7 +65,7 @@ Reloading Pi, switching sessions, or quitting cancels active Reviewer and Chair 
 
 Every Reviewer and Chair run is saved as a named Pi session. When the main session has a file, these additional sessions record it as their parent. This lets `/usage` account for every council model. The files contain the original prompt and raw model responses.
 
-The extension keeps the latest Reviewer report in memory for `/council-reviews`. That command adds anonymized copies to the main conversation only when requested; the copies are unverified reference material and do not trigger another main-agent response.
+The extension persists each completed Reviewer report in a versioned custom entry in the main session, including reports below `minSuccess`. These entries contain the original prompt and raw responses, but do not participate in model context. `/council-reviews` restores the latest report from the active branch after reload or resume; reports from abandoned branches are excluded. That command adds anonymized copies to model context only when requested; the copies are unverified reference material and do not trigger another main-agent response. Cancelling before the Reviewer phase completes does not replace the previous report.
 
 ## Development
 
