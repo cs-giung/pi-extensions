@@ -28,7 +28,7 @@ describe("pi-usage-deepseek", () => {
 
     const usage = await fetchDeepSeekUsage({
       getApiKeyForProvider: vi.fn(async () => "secret-key"),
-    }, "deepseek-v4-pro", request as typeof fetch);
+    }, request as typeof fetch);
 
     expect(request).toHaveBeenCalledWith(
       "https://api.deepseek.com/user/balance",
@@ -83,7 +83,8 @@ describe("pi-usage-deepseek", () => {
       "deepseek $17.35",
     ));
 
-    handlers.model_select?.({ model: { provider: "openai-codex", id: "gpt-5.6-sol" } }, ctx);
+    expect(loadUsage).toHaveBeenCalledWith(ctx.modelRegistry, undefined, expect.any(AbortSignal));
+    handlers.model_select?.({ model: { provider: "openai", id: "gpt-5.6-sol" } }, ctx);
     expect(setStatus).toHaveBeenLastCalledWith("usage-deepseek", "deepseek $17.35");
     handlers.session_shutdown?.({}, ctx);
   });

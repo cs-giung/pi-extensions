@@ -12,7 +12,7 @@ const registry = {
 };
 const providers = [
   { name: "Codex", HttpError: CodexUsageHttpError, run: (request: typeof fetch) => fetchCodexUsage(registry, "codex", request) },
-  { name: "DeepSeek", HttpError: DeepSeekUsageHttpError, run: (request: typeof fetch) => fetchDeepSeekUsage(registry, "", request) },
+  { name: "DeepSeek", HttpError: DeepSeekUsageHttpError, run: (request: typeof fetch) => fetchDeepSeekUsage(registry, request) },
   { name: "Z.ai", HttpError: ZaiUsageHttpError, run: (request: typeof fetch) => fetchZaiUsage(registry, request) },
 ];
 

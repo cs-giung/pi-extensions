@@ -42,7 +42,7 @@ it("shows all three providers together on an unrelated model", async () => {
   expect(vi.getTimerCount()).toBe(0);
 });
 
-it.each(["openai-codex", "openai"])("cancels regular Codex requests when selecting %s Spark and restores regular quota on other providers", async (provider) => {
+it("cancels regular Codex requests when selecting OpenAI Spark and restores regular quota on other providers", async () => {
   vi.useFakeTimers();
   const handlers: Record<string, Handler> = {};
   const ctx = createContext();
@@ -59,12 +59,12 @@ it.each(["openai-codex", "openai"])("cancels regular Codex requests when selecti
   codexExtension({ registerCommand: vi.fn(), on: (name: string, handler: Handler) => { handlers[name] = handler; } } as unknown as ExtensionAPI,
     { loadUsage: load });
   handlers.session_start?.({} as never, ctx);
-  handlers.model_select?.({ model: { provider, id: "test-spark" } } as never, ctx);
+  handlers.model_select?.({ model: { provider: "openai", id: "test-spark" } } as never, ctx);
   expect(firstSignal?.aborted).toBe(true);
   await vi.advanceTimersByTimeAsync(0);
   expect(load.mock.calls[1]?.[1]).toBe("test-spark");
   expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("usage-codex", "spark 90%");
-  handlers.model_select?.({ model: ctx.model } as never, ctx);
+  handlers.model_select?.({ model: { provider: "anthropic", id: "test-spark" } } as never, ctx);
   await vi.advanceTimersByTimeAsync(0);
   expect(load.mock.calls[2]?.[1]).toBe("codex");
   expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("usage-codex", "codex 80%");
@@ -193,6 +193,27 @@ for (const provider of providers) {
       expect(ctx.ui.notify).not.toHaveBeenCalledWith(expect.stringContaining("secret-api-key"), expect.anything());
       emit("session_shutdown");
     });
+
+    if (provider.key === "usage-codex") {
+      it("explains incompatible OAuth safely and reports the successful fallback source", async () => {
+        vi.useFakeTimers();
+        const load = vi.fn()
+          .mockRejectedValueOnce(new CodexAuthUnavailableError("private-token-value", "incompatible_oauth"))
+          .mockResolvedValue({ ...provider.usage, authSource: "Codex CLI" });
+        const { ctx, emit, diagnose } = setup(load);
+        emit("session_start");
+        await vi.advanceTimersByTimeAsync(0);
+        await diagnose();
+        expect(ctx.ui.setStatus).toHaveBeenLastCalledWith(provider.key, undefined);
+        expect(ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("Pi openai OAuth has no Codex account ID"), "info");
+        expect(ctx.ui.notify).not.toHaveBeenCalledWith(expect.stringContaining("private-token-value"), expect.anything());
+        await vi.advanceTimersByTimeAsync(1000);
+        await diagnose();
+        expect(ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("Auth source: Codex CLI"), "info");
+        expect(ctx.ui.setStatus).toHaveBeenLastCalledWith(provider.key, "codex 80%");
+        emit("session_shutdown");
+      });
+    }
 
     it("does no background work without a UI", async () => {
       vi.useFakeTimers();

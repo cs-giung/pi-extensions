@@ -8,12 +8,12 @@ const token = `header.${Buffer.from(JSON.stringify({
 })).toString("base64url")}.signature`;
 const registry = (getKey: () => Promise<string>) => ({
   getApiKeyForProvider: getKey,
-  getProviderAuth: async () => ({ auth: { apiKey: await getKey() }, source: "test" }),
+  getProviderAuth: async () => ({ auth: { apiKey: await getKey() }, source: "OAuth" }),
 });
 type Registry = ReturnType<typeof registry>;
 const providers = [
   { name: "Codex", run: (auth: Registry, fetch: typeof globalThis.fetch, signal: AbortSignal) => fetchCodexUsage(auth, "codex", fetch, signal) },
-  { name: "DeepSeek", run: (auth: Registry, fetch: typeof globalThis.fetch, signal: AbortSignal) => fetchDeepSeekUsage(auth, "", fetch, signal) },
+  { name: "DeepSeek", run: (auth: Registry, fetch: typeof globalThis.fetch, signal: AbortSignal) => fetchDeepSeekUsage(auth, fetch, signal) },
   { name: "Z.ai", run: (auth: Registry, fetch: typeof globalThis.fetch, signal: AbortSignal) => fetchZaiUsage(auth, fetch, signal) },
 ];
 

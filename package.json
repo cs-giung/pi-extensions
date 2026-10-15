@@ -10,7 +10,9 @@
   ],
   "pi": {
     "extensions": [
-      "./packages/pi-reviewer-chair/src/index.ts",
+      "./packages/pi-aufheben/src/index.ts",
+      "./packages/pi-council/src/index.ts",
+      "./packages/pi-usage/src/index.ts",
       "./packages/pi-usage-codex/src/index.ts",
       "./packages/pi-usage-deepseek/src/index.ts",
       "./packages/pi-usage-zai/src/index.ts"
@@ -18,19 +20,22 @@
   },
   "scripts": {
     "check": "npm run typecheck && npm test && npm run pack:check",
-    "pack:check": "npm pack --dry-run --json ./packages/pi-reviewer-chair ./packages/pi-usage-codex ./packages/pi-usage-deepseek ./packages/pi-usage-zai",
+    "pack:check": "npm pack --dry-run --json ./packages/*",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*"
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
   },
   "dependencies": {
     "yaml": "^2.8.1",
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "1.0.3",
+    "@earendil-works/pi-coding-agent": "1.2.0",
     "@types/node": "^24.10.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.11"

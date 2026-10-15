@@ -21,7 +21,6 @@ export default function zaiUsageExtension(pi: ExtensionAPI, options: ZaiUsageExt
   let context: ExtensionContext | undefined;
   let generation = 0;
   let timer: NodeJS.Timeout | undefined;
-  let inFlight = false;
   let activeRequest: AbortController | undefined;
   let cached: ZaiUsage | undefined;
   const key = "usage-zai";
@@ -42,7 +41,7 @@ export default function zaiUsageExtension(pi: ExtensionAPI, options: ZaiUsageExt
     description: "Show Z.ai balance polling diagnostics without exposing credentials",
     handler: async (_args, ctx) => {
       ctx.ui.notify([
-        `Z.ai polling: ${inFlight ? "request in progress" : context?.hasUI ? "waiting" : "paused"}`,
+        `Z.ai polling: ${activeRequest ? "request in progress" : context?.hasUI ? "waiting" : "paused"}`,
         `Last success: ${lastSuccess === undefined ? "never" : new Date(lastSuccess).toISOString()}`,
         `Last error: ${lastError ?? "none"}`,
         `Consecutive failures: ${failures}`,
@@ -53,11 +52,10 @@ export default function zaiUsageExtension(pi: ExtensionAPI, options: ZaiUsageExt
 
   const refresh = async (): Promise<void> => {
     const ctx = context;
-    if (!ctx?.hasUI || inFlight) return;
+    if (!ctx?.hasUI || activeRequest) return;
     clearTimeout(timer);
     nextRefreshAt = undefined;
     const revision = generation;
-    inFlight = true;
     const request = new AbortController();
     activeRequest = request;
     try {
@@ -90,7 +88,6 @@ export default function zaiUsageExtension(pi: ExtensionAPI, options: ZaiUsageExt
       }
     } finally {
       activeRequest = undefined;
-      inFlight = false;
       if (revision !== generation && context) void refresh();
       else schedule();
     }

@@ -21,7 +21,6 @@ export default function deepSeekUsageExtension(pi: ExtensionAPI, options: DeepSe
   let context: ExtensionContext | undefined;
   let generation = 0;
   let timer: NodeJS.Timeout | undefined;
-  let inFlight = false;
   let activeRequest: AbortController | undefined;
   let cached: DeepSeekUsage | undefined;
   const key = "usage-deepseek";
@@ -42,7 +41,7 @@ export default function deepSeekUsageExtension(pi: ExtensionAPI, options: DeepSe
     description: "Show DeepSeek balance polling diagnostics without exposing credentials",
     handler: async (_args, ctx) => {
       ctx.ui.notify([
-        `DeepSeek polling: ${inFlight ? "request in progress" : context?.hasUI ? "waiting" : "paused"}`,
+        `DeepSeek polling: ${activeRequest ? "request in progress" : context?.hasUI ? "waiting" : "paused"}`,
         `Last success: ${lastSuccess === undefined ? "never" : new Date(lastSuccess).toISOString()}`,
         `Last error: ${lastError ?? "none"}`,
         `Consecutive failures: ${failures}`,
@@ -53,15 +52,14 @@ export default function deepSeekUsageExtension(pi: ExtensionAPI, options: DeepSe
 
   const refresh = async (): Promise<void> => {
     const ctx = context;
-    if (!ctx?.hasUI || inFlight) return;
+    if (!ctx?.hasUI || activeRequest) return;
     clearTimeout(timer);
     nextRefreshAt = undefined;
     const revision = generation;
-    inFlight = true;
     const request = new AbortController();
     activeRequest = request;
     try {
-      const usage = await loadUsage(ctx.modelRegistry, "", undefined, request.signal);
+      const usage = await loadUsage(ctx.modelRegistry, undefined, request.signal);
       if (revision !== generation || !context) return;
       cached = usage;
       lastSuccess = Date.now();
@@ -90,7 +88,6 @@ export default function deepSeekUsageExtension(pi: ExtensionAPI, options: DeepSe
       }
     } finally {
       activeRequest = undefined;
-      inFlight = false;
       if (revision !== generation && context) void refresh();
       else schedule();
     }

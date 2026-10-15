@@ -1,0 +1,8 @@
+# Replace both model references with models available in your Pi installation.
+# Both roles use the built-in English research contracts and read-only tools.
+# The current main session is the Synthesizer.
+thesizer:
+  model: provider-a/model-a
+
+antithesizer:
+  model: provider-b/model-b

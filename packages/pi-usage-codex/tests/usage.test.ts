@@ -1,5 +1,8 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import codexUsageExtension from "../src/index.js";
 import {
   CodexAuthUnavailableError,
@@ -16,6 +19,16 @@ const theme = {
   fg: (_color: string, text: string) => text,
 } as unknown as ExtensionContext["ui"]["theme"];
 
+let codexHome: string;
+beforeEach(async () => {
+  codexHome = await mkdtemp(join(tmpdir(), "pi-usage-codex-"));
+  vi.stubEnv("CODEX_HOME", codexHome);
+});
+afterEach(async () => {
+  vi.unstubAllEnvs();
+  await rm(codexHome, { recursive: true, force: true });
+});
+
 describe("pi-usage-codex", () => {
   it("uses Pi OAuth auth and selects the regular quota windows", async () => {
     const token = jwtWithAccount("acct-123");
@@ -29,7 +42,7 @@ describe("pi-usage-codex", () => {
     const getProviderAuth = vi.fn(async () => ({ auth: { apiKey: token }, source: "OAuth" }));
     const usage = await fetchCodexUsage({ getProviderAuth }, "gpt-5.6-sol", request as typeof fetch);
 
-    expect(getProviderAuth).toHaveBeenCalledExactlyOnceWith("openai-codex");
+    expect(getProviderAuth).toHaveBeenCalledExactlyOnceWith("openai");
 
     expect(extractAccountId(token)).toBe("acct-123");
     expect(request).toHaveBeenCalledWith(
@@ -48,30 +61,6 @@ describe("pi-usage-codex", () => {
     });
   });
 
-  it.each([undefined, "invalid-token"])(
-    "falls back to OpenAI ChatGPT OAuth when legacy auth is %s",
-    async (legacyToken) => {
-      const token = jwtWithAccount("chatgpt-account");
-      const getProviderAuth = vi.fn(async (provider: string) => provider === "openai"
-        ? { auth: { apiKey: token }, source: "OAuth" }
-        : legacyToken ? { auth: { apiKey: legacyToken }, source: "OAuth" } : undefined);
-      const request = vi.fn(async () => new Response(JSON.stringify({
-        rate_limit: { primary_window: { used_percent: 25 } },
-      })));
-
-      const usage = await fetchCodexUsage({ getProviderAuth }, "codex", request as typeof fetch);
-
-      expect(getProviderAuth.mock.calls).toEqual([["openai-codex"], ["openai"]]);
-      expect(request).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
-        headers: expect.objectContaining({
-          authorization: `Bearer ${token}`,
-          "chatgpt-account-id": "chatgpt-account",
-        }),
-      }));
-      expect(usage.primary?.usedPercent).toBe(25);
-    },
-  );
-
   it.each(["stored", "OPENAI_API_KEY", undefined])(
     "never sends an OpenAI API key to ChatGPT (source: %s)",
     async (source) => {
@@ -87,16 +76,17 @@ describe("pi-usage-codex", () => {
     },
   );
 
-  it("hides missing or invalid subscription credentials without requesting usage", async () => {
+  it.each([undefined, "", "   ", "invalid-token"])("hides missing or invalid OpenAI OAuth tokens (%s) without requesting usage", async (apiKey) => {
     const request = vi.fn();
-    const getProviderAuth = vi.fn(async () => ({ auth: { apiKey: "invalid-token" }, source: "OAuth" }));
+    const getProviderAuth = vi.fn(async () => apiKey === undefined ? undefined : { auth: { apiKey }, source: "OAuth" });
     await expect(fetchCodexUsage({ getProviderAuth }, "codex", request)).rejects.toBeInstanceOf(
       CodexAuthUnavailableError,
     );
+    expect(getProviderAuth.mock.calls).toEqual([["openai"], ["openai-codex"]]);
     expect(request).not.toHaveBeenCalled();
   });
 
-  it("does not fetch if cancelled while resolving the OpenAI fallback", async () => {
+  it("does not fetch if cancelled while resolving OpenAI OAuth", async () => {
     const controller = new AbortController();
     const getProviderAuth = vi.fn(async (provider: string) => {
       if (provider !== "openai") return undefined;
@@ -107,6 +97,101 @@ describe("pi-usage-codex", () => {
     await expect(fetchCodexUsage(
       { getProviderAuth }, "codex", request, controller.signal,
     )).rejects.toThrow();
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("falls back from new Pi OAuth to legacy Pi Codex OAuth", async () => {
+    const token = jwtWithAccount("legacy-account");
+    const getProviderAuth = vi.fn(async (provider: string) => ({
+      auth: { apiKey: provider === "openai" ? encryptedJwt() : token }, source: "OAuth",
+    }));
+    const request = usageRequest();
+    const usage = await fetchCodexUsage({ getProviderAuth }, "codex", request);
+    expect(usage.authSource).toBe("Pi openai-codex");
+    expect(getProviderAuth.mock.calls).toEqual([["openai"], ["openai-codex"]]);
+    expect(request.mock.calls[0]?.[1]?.headers).toMatchObject({
+      authorization: `Bearer ${token}`, "chatgpt-account-id": "legacy-account",
+    });
+  });
+
+  it("reads CLI ChatGPT auth when new Pi OAuth has no account ID, without modifying the file", async () => {
+    const token = jwtWithAccount("cli-account");
+    const contents = JSON.stringify({ auth_mode: "chatgpt", tokens: {
+      access_token: token, account_id: "cli-account", refresh_token: "private-refresh-token",
+    } });
+    await writeFile(join(codexHome, "auth.json"), contents);
+    const getProviderAuth = vi.fn(async (provider: string) => provider === "openai"
+      ? { auth: { apiKey: encryptedJwt() }, source: "OAuth" } : undefined);
+    const request = usageRequest();
+    expect(await fetchCodexUsage({ getProviderAuth }, "codex", request)).toMatchObject({
+      authSource: "Codex CLI", primary: { usedPercent: 20 },
+    });
+    expect(request.mock.calls[0]?.[1]?.headers).toMatchObject({
+      authorization: `Bearer ${token}`, "chatgpt-account-id": "cli-account",
+    });
+    expect(await readFile(join(codexHome, "auth.json"), "utf8")).toBe(contents);
+  });
+
+  it("prefers compatible Pi OAuth over CLI credentials for another account", async () => {
+    await writeFile(join(codexHome, "auth.json"), JSON.stringify({
+      tokens: { access_token: jwtWithAccount("cli-account"), account_id: "cli-account" },
+    }));
+    const token = jwtWithAccount("pi-account");
+    const getProviderAuth = vi.fn(async () => ({ auth: { apiKey: token }, source: "OAuth" }));
+    const request = usageRequest();
+    expect((await fetchCodexUsage({ getProviderAuth }, "codex", request)).authSource).toBe("Pi openai");
+    expect(getProviderAuth).toHaveBeenCalledExactlyOnceWith("openai");
+    expect(request.mock.calls[0]?.[1]?.headers).toMatchObject({
+      authorization: `Bearer ${token}`, "chatgpt-account-id": "pi-account",
+    });
+  });
+
+  it("does not read CLI credentials or fetch after cancellation during legacy OAuth resolution", async () => {
+    await writeFile(join(codexHome, "auth.json"), JSON.stringify({
+      tokens: { access_token: jwtWithAccount("cli-account") },
+    }));
+    const controller = new AbortController();
+    const getProviderAuth = vi.fn(async (provider: string) => {
+      if (provider === "openai") return { auth: { apiKey: encryptedJwt() }, source: "OAuth" };
+      controller.abort();
+      return undefined;
+    });
+    const request = vi.fn();
+    await expect(fetchCodexUsage({ getProviderAuth }, "codex", request, controller.signal)).rejects.toThrow();
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("reports incompatible Pi OAuth when no Codex credentials exist", async () => {
+    const getProviderAuth = vi.fn(async (provider: string) => provider === "openai"
+      ? { auth: { apiKey: encryptedJwt() }, source: "OAuth" } : undefined);
+    const request = vi.fn();
+    await expect(fetchCodexUsage({ getProviderAuth }, "codex", request)).rejects.toMatchObject({
+      reason: "incompatible_oauth",
+    });
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "not-json-private-secret",
+    JSON.stringify({ OPENAI_API_KEY: "private-api-key" }),
+    JSON.stringify({ auth_mode: "apikey", tokens: { access_token: jwtWithAccount("account") } }),
+    JSON.stringify({ auth_mode: "chatgpt", tokens: { access_token: "invalid-private-token" } }),
+    JSON.stringify({ tokens: { access_token: jwtWithAccount("account"), account_id: "different" } }),
+  ])("never sends invalid or API-key CLI credentials (%#)", async (contents) => {
+    await writeFile(join(codexHome, "auth.json"), contents);
+    const request = vi.fn();
+    await expect(fetchCodexUsage({ getProviderAuth: async () => undefined }, "codex", request))
+      .rejects.toMatchObject({ reason: "codex_cli_unavailable" });
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("does not send or refresh expired CLI credentials", async () => {
+    await writeFile(join(codexHome, "auth.json"), JSON.stringify({
+      tokens: { access_token: jwtWithAccount("account", 1), refresh_token: "private-refresh-token" },
+    }));
+    const request = vi.fn();
+    await expect(fetchCodexUsage({ getProviderAuth: async () => undefined }, "codex", request))
+      .rejects.toMatchObject({ reason: "codex_cli_expired" });
     expect(request).not.toHaveBeenCalled();
   });
 
@@ -168,9 +253,22 @@ describe("pi-usage-codex", () => {
   });
 });
 
-function jwtWithAccount(accountId: string): string {
+function jwtWithAccount(accountId: string, exp?: number): string {
   const payload = Buffer.from(JSON.stringify({
+    ...(exp === undefined ? {} : { exp }),
     "https://api.openai.com/auth": { chatgpt_account_id: accountId },
   })).toString("base64url");
   return `header.${payload}.signature`;
+}
+
+function encryptedJwt(): string {
+  return `header.${Buffer.from(JSON.stringify({
+    "https://api.openai.com/auth": { encrypted_auth_metadata: "private-metadata" },
+  })).toString("base64url")}.signature`;
+}
+
+function usageRequest() {
+  return vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => new Response(JSON.stringify({
+    rate_limit: { primary_window: { used_percent: 20 } },
+  }), { status: 200 }));
 }

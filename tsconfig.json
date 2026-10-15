@@ -5,6 +5,8 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "verbatimModuleSyntax": true,
@@ -12,14 +14,8 @@
     "types": ["node"]
   },
   "include": [
-    "packages/pi-reviewer-chair/src/**/*.ts",
-    "packages/pi-reviewer-chair/tests/**/*.ts",
-    "packages/pi-usage-codex/src/**/*.ts",
-    "packages/pi-usage-codex/tests/**/*.ts",
-    "packages/pi-usage-deepseek/src/**/*.ts",
-    "packages/pi-usage-deepseek/tests/**/*.ts",
-    "packages/pi-usage-zai/src/**/*.ts",
-    "packages/pi-usage-zai/tests/**/*.ts",
+    "packages/*/src/**/*.ts",
+    "packages/*/tests/**/*.ts",
     "tests/**/*.ts",
     "vitest.config.ts"
   ]

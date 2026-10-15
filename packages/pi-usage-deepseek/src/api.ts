@@ -40,7 +40,6 @@ type Registry = Pick<ModelRegistry, "getApiKeyForProvider">;
 
 export async function fetchDeepSeekUsage(
   registry: Registry,
-  _modelId: string,
   fetchImpl: Fetch = globalThis.fetch,
   signal?: AbortSignal,
 ): Promise<DeepSeekUsage> {

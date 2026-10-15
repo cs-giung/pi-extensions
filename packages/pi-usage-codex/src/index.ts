@@ -22,7 +22,6 @@ export default function codexUsageExtension(pi: ExtensionAPI, options: CodexUsag
   let modelId = "codex";
   let generation = 0;
   let timer: NodeJS.Timeout | undefined;
-  let inFlight = false;
   let activeRequest: AbortController | undefined;
   let cached: CodexUsage | undefined;
   const key = "usage-codex";
@@ -43,7 +42,8 @@ export default function codexUsageExtension(pi: ExtensionAPI, options: CodexUsag
     description: "Show Codex quota polling diagnostics without exposing credentials",
     handler: async (_args, ctx) => {
       ctx.ui.notify([
-        `Codex polling: ${inFlight ? "request in progress" : context?.hasUI ? "waiting" : "paused"}`,
+        `Codex polling: ${activeRequest ? "request in progress" : context?.hasUI ? "waiting" : "paused"}`,
+        `Auth source: ${cached?.authSource ?? "none"}`,
         `Last success: ${lastSuccess === undefined ? "never" : new Date(lastSuccess).toISOString()}`,
         `Last error: ${lastError ?? "none"}`,
         `Consecutive failures: ${failures}`,
@@ -54,11 +54,10 @@ export default function codexUsageExtension(pi: ExtensionAPI, options: CodexUsag
 
   const refresh = async (): Promise<void> => {
     const ctx = context;
-    if (!ctx?.hasUI || inFlight) return;
+    if (!ctx?.hasUI || activeRequest) return;
     clearTimeout(timer);
     nextRefreshAt = undefined;
     const revision = generation;
-    inFlight = true;
     const request = new AbortController();
     activeRequest = request;
     try {
@@ -76,7 +75,12 @@ export default function codexUsageExtension(pi: ExtensionAPI, options: CodexUsag
         cached = undefined;
         failures = 0;
         retryAfterMs = 0;
-        lastError = "Subscription credentials unavailable.";
+        lastError = {
+          missing: "Subscription credentials unavailable. Sign in with Codex CLI or /login openai-codex.",
+          incompatible_oauth: "Pi openai OAuth has no Codex account ID. Sign in with Codex CLI or /login openai-codex.",
+          codex_cli_unavailable: "Codex CLI credentials unreadable or invalid. Run codex login again.",
+          codex_cli_expired: "Codex CLI access token expired. Use Codex CLI to refresh it or run codex login again.",
+        }[error.reason];
         context.ui.setStatus(key, undefined);
       } else {
         failures += 1;
@@ -91,7 +95,6 @@ export default function codexUsageExtension(pi: ExtensionAPI, options: CodexUsag
       }
     } finally {
       activeRequest = undefined;
-      inFlight = false;
       if (revision !== generation && context) void refresh();
       else schedule();
     }
@@ -100,8 +103,7 @@ export default function codexUsageExtension(pi: ExtensionAPI, options: CodexUsag
   const select = (ctx: ExtensionContext, model = ctx.model): void => {
     context = ctx;
     // Keep the regular subscription visible on every provider; Spark has its own bucket.
-    const next = (model?.provider === "openai-codex" || model?.provider === "openai")
-      && model.id.toLowerCase().includes("spark")
+    const next = (model?.provider === "openai" || model?.provider === "openai-codex") && model.id.toLowerCase().includes("spark")
       ? model.id : "codex";
     if (next !== modelId) {
       modelId = next;

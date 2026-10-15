@@ -18,6 +18,10 @@ const packages = readdirSync(resolve(root, "packages"), { withFileTypes: true })
   .filter((entry) => entry.isDirectory()).map((entry) => entry.name);
 
 describe("package manifests", () => {
+  it("loads only the root package from project settings, without external usage or paste commands", () => {
+    const settings = JSON.parse(readFileSync(resolve(root, ".pi/settings.json"), "utf8"));
+    expect(settings.packages).toEqual([".."]);
+  });
   it("loads every local package exactly once from the root", () => {
     const expected = packages.flatMap((name) => {
       const directory = resolve(root, "packages", name);
@@ -32,6 +36,11 @@ describe("package manifests", () => {
     const manifest = readManifest(directory);
     expect(manifest.name).toBe(name);
     expect(manifest.devDependencies).toEqual(rootManifest.devDependencies);
+    expect(manifest.files).toEqual(expect.arrayContaining(["src", "README.md", "LICENSE"]));
+    for (const path of manifest.files) {
+      expect(["src", "README.md", "LICENSE"].includes(path) || /^\.pi\/[^/]+\.example\.yaml$/.test(path),
+        `${name}: unexpected public package content ${path}`).toBe(true);
+    }
     for (const path of [...manifest.files, ...manifest.pi.extensions]) {
       expect(existsSync(resolve(directory, path)), `${name}: missing ${path}`).toBe(true);
     }

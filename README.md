@@ -1,80 +1,100 @@
 # Pi extensions
 
-This repository contains four personal Pi packages and project configuration for two third-party packages. It keeps local extension code, package choices, examples, and verification commands together.
+This repository contains six personal Pi packages. It keeps local extension code, package choices, examples, and verification commands together.
 
 ## Included packages
 
 | Source | Commands | Purpose |
 | --- | --- | --- |
-| `packages/pi-reviewer-chair` | `/council`, `/council-check`, `/council-cancel`, `/council-reviews`, `/council-copy` | Validate and run independent Reviewers, synthesize a Chair answer, and copy the latest result. |
+| `packages/pi-aufheben` | `/aufheben`, `/aufheben-next`, `/aufheben-pause`, `/aufheben-status`, `/aufheben-stop` | Develop research ideas with persistent Thesizer/Antithesizer partners and the current main model as Synthesizer. |
+| `packages/pi-council` | `/council`, `/council-next`, `/council-check`, `/council-cancel`, `/council-reviews`, `/council-copy` | Start fresh or continue independent Reviewer histories; the current main-session model synthesizes as Chair. |
 | `packages/pi-usage-codex` | `/usage-codex-status` | Show Codex subscription quota windows (Spark when selected) and polling diagnostics. |
 | `packages/pi-usage-deepseek` | `/usage-deepseek-status` | Show the current DeepSeek account balance and polling diagnostics. |
 | `packages/pi-usage-zai` | `/usage-zai-status` | Show the available Z.ai pay-as-you-go USD balance and polling diagnostics. |
-| `npm:@tmustier/pi-usage-extension` | `/usage` | Display the interactive historical usage dashboard. |
-| `npm:@tmustier/pi-raw-paste` | `/paste` | Arm a one-shot raw paste so large clipboard contents remain fully visible and editable instead of being condensed into paste markers. |
+| `packages/pi-usage` | `/usage [today\|week\|last-week\|30d\|all]` | Inspect historical usage in a local provider/model table with filtering and nested-session accounting. |
 
 ## Repository layout
 
 ```text
 .pi/settings.json                    Project-local Pi package list
-packages/pi-reviewer-chair/          Personal Reviewer–Chair package
+packages/pi-aufheben/                Persistent dialectical research workflow
+packages/pi-council/                 Independent reviews with main-session Chair
+packages/pi-usage/                   Local historical usage table
 packages/pi-usage-codex/             Personal Codex quota status package
 packages/pi-usage-deepseek/          Personal DeepSeek balance status package
 packages/pi-usage-zai/               Personal Z.ai cash balance status package
-packages/pi-reviewer-chair/.pi/      Example Reviewer–Chair configurations
+packages/pi-council/.pi/             Example Council configuration
 package.json                         Root Pi package and development commands
 ```
 
-The root Pi manifest loads all four local packages. `.pi/settings.json` loads that root package and both npm packages when Pi runs in this repository.
+The root Pi manifest loads all six local packages. `.pi/settings.json` loads only that root package when Pi runs in this repository.
 
 ## Setup
 
-Node.js 22.19 or newer is required. Development dependencies pin Pi v1.0.3; CI also checks compatibility with Pi v1.2.0. Install the local package dependencies:
+Node.js 22.19 or newer is required. Only the latest Pi release is targeted, currently v1.2.0. Development dependencies pin that version for reproducible checks; older Pi versions are not maintained. Install the local package dependencies:
 
 ```bash
 npm install
 ```
 
-Start Pi in this repository and trust the project when prompted. Pi then installs the missing project npm packages and loads all six extensions.
+Start Pi in this repository and trust the project when prompted. Pi loads the six local extensions.
 
-The Codex, DeepSeek, and Z.ai footer indicators appear together whenever their Pi credentials are configured, regardless of the selected model. They normally refresh 30 seconds after each completed request. Failures trigger exponential backoff with jitter, capped at five minutes (or the configured base interval if longer); server `Retry-After` can extend that delay. The `/usage-*-status` commands show the last success, a safe error category, consecutive failures, and the next refresh time without exposing credentials or response bodies. Codex supports both legacy `openai-codex` credentials and ChatGPT sign-in through `/login openai`; OpenAI API keys are not subscription credentials. Missing credentials hide the corresponding indicator; transient failures mark cached values `(stale)`. Z.ai displays the available pay-as-you-go monetary balance, not Coding Plan quota. Configure `ZAI_API_KEY` or authenticate the `zai` provider through Pi.
+### Provider quota and balances
+
+The footer indicators appear together whenever compatible credentials are available, regardless of the selected model. They refresh 30 seconds after completed requests, back off on failures, and honor `Retry-After`. Missing credentials hide an indicator; refresh failures mark cached values `(stale)`. Use `/usage-*-status` for safe polling diagnostics.
+
+- [Codex](packages/pi-usage-codex/README.md): subscription quota via compatible Pi OAuth or read-only Codex CLI credentials. Pi 1.2.0's new `openai` OAuth needs the legacy `openai-codex` provider or CLI fallback. API keys are never used, and CLI credentials are never refreshed or modified.
+- [DeepSeek](packages/pi-usage-deepseek/README.md): the authenticated account's monetary balance.
+- [Z.ai](packages/pi-usage-zai/README.md): spendable pay-as-you-go USD balance, not Coding Plan quota. Set `ZAI_API_KEY` or authenticate the `zai` provider.
+
+### Aufheben research workflow
+
+Create `.pi/aufheben.yaml` and replace both role model references with available `provider/model-id` values:
+
+```bash
+cp packages/pi-aufheben/.pi/aufheben.example.yaml .pi/aufheben.yaml
+```
+
+Start `/aufheben <question>` in the current conversation. The main model resolves its context, calls two separate persistent research partners, synthesizes their claims and questions, and waits. `/aufheben-next [focus]` explicitly authorizes the next round or an interrupted-stage retry; ordinary discussion does not. `/aufheben-pause` preserves an open exploration; `/aufheben-stop` closes it without deleting history. Reload/resume and tree navigation never silently restart inference, and child checkpoints follow the active main branch. Children only have configured read-only tools. Both child roles write in English; the main Synthesizer answers in the user's requested language.
+
+See [`packages/pi-aufheben/README.md`](packages/pi-aufheben/README.md) for intervention, configuration snapshots, recovery, usage accounting, and privacy limits.
+
+### Council with the main session as Chair
 
 Before running `/council`, create a project configuration from the example:
 
 ```bash
-cp packages/pi-reviewer-chair/.pi/reviewer-chair.example.yaml .pi/reviewer-chair.yaml
+cp packages/pi-council/.pi/council.example.yaml .pi/council.yaml
 ```
 
-The example uses independent Reviewers with the same correctness criteria; model choices and reviewer counts are personal preferences, not test fixtures. Customize their prompts for different review focuses if desired, and edit the copied file with model IDs available in the current Pi installation. The local configuration is ignored by Git.
+The example uses independent Reviewers with built-in correctness criteria and read-only tools. Replace the model placeholders with accessible models and add optional settings only when needed. Runtime files under `.pi/` are ignored by Git; only repository installation settings are public.
 
-Run `/council-check` to validate configuration and model availability without starting inference. `/council` performs the same checks before any Reviewer starts, including checking the Chair. Authentication resolution may still refresh credentials. `maxConcurrency` limits active Reviewers (default: four); `/council-cancel` stops the active run and prevents queued Reviewers from starting. `maxDurationMs` applies to each agent prompt, not the whole Council.
+Run `/council-check` to validate configuration and model availability without inference. `/council <prompt>` starts fresh independent Reviewers; the existing main session prepares the brief and synthesizes their anonymous results as Chair. `/council-next [focus]` authorizes one further batch using each Reviewer's accepted history. Nothing runs automatically between batches.
 
-Each Reviewer and Chair run is stored as a named Pi session, allowing `/usage` to include every configured model. Reviewer reports are also persisted as non-context entries in the main session, so `/council-reviews` works after reload or resume and follows the active branch. Raw reviews enter model context only when explicitly disclosed with that command. Use `/council-copy` to copy the latest successful Chair answer from the current branch.
+`/council-cancel` cancels owned work without aborting unrelated tasks. `/council-reviews` redisplays the latest report, and `/council-copy` copies the latest completed Chair answer on the active branch. See [`packages/pi-council/README.md`](packages/pi-council/README.md) for structured concern tracking, concurrency, deadlines, recovery, privacy, and migration from `pi-reviewer-chair`.
 
-Run `/paste` immediately before a normal terminal paste to keep the next clipboard payload as raw, editable text. The command is one-shot and has no default keybinding. Terminal.app and Warp intercept `Cmd+V` and `Cmd+Shift+V`, so in those terminals the command must be used before pasting.
+### Historical usage table
+
+`/usage` opens the local Table dashboard. Use Tab or Left/Right to change periods, Enter to expand a provider's models, `/` to search, `s` to sort, `p` to filter to the current project, and `r` to refresh. Totals follow the visible slice. `/usage all` starts with all recorded history.
+
+The dashboard reads local session accounting without model calls or network requests. It includes recorded child/summary usage and reconciles Council/Aufheben parent rollups against child session records. Tokens include cache reads and writes; cost is recorded usage, not a subscription invoice. See [`packages/pi-usage/README.md`](packages/pi-usage/README.md) for data warnings and accounting limits. The old external dashboard and raw-paste package are no longer registered by this repository; remove separately installed personal copies if needed to avoid duplicate commands.
 
 ### Optional user-wide installation
 
 To load the extensions independently outside this repository, install each package from its directory:
 
 ```bash
-pi install ~/pi-extensions/packages/pi-reviewer-chair
+pi install ~/pi-extensions/packages/pi-aufheben
+pi install ~/pi-extensions/packages/pi-council
+pi install ~/pi-extensions/packages/pi-usage
 pi install ~/pi-extensions/packages/pi-usage-codex
 pi install ~/pi-extensions/packages/pi-usage-deepseek
 pi install ~/pi-extensions/packages/pi-usage-zai
-pi install npm:@tmustier/pi-usage-extension
-pi install npm:@tmustier/pi-raw-paste
 ```
 
-The local packages remain linked to this repository; run `/reload` after changing their code. `/council` reads `.pi/reviewer-chair.yaml` from the directory where Pi is running, so each project may keep a separate council configuration.
+The local packages remain linked to this repository; run `/reload` after changing their code. `/council` reads `.pi/council.yaml` from the directory where Pi is running, so each project may keep a separate council configuration.
 
 ## Maintenance
-
-Update third-party packages with Pi's package manager rather than editing its npm cache:
-
-```bash
-pi update --extensions
-```
 
 Validate all personal packages after changing code or configuration examples:
 
@@ -82,10 +102,8 @@ Validate all personal packages after changing code or configuration examples:
 npm run check
 ```
 
-Checks cover TypeScript, provider parsing, polling/backoff/cancellation, Council preflight and concurrency, active-session cleanup, branch-aware report restoration, package-manifest consistency, and package contents. Cross-package integration tests live in `tests/`; each package keeps its own API/unit tests. GitHub Actions runs the suite on Node.js 22 and 24 against the pinned and compatibility Pi versions. Keep root and package development dependencies aligned when updating Pi. Example tests validate structural invariants rather than exact model IDs or reviewer counts.
+Checks cover TypeScript, provider parsing, polling/backoff/cancellation, Council preflight and concurrency, Aufheben rounds/intervention/recovery, real-SDK integration with fake providers, active-session cleanup, branch-aware restoration, package-manifest consistency, and package contents. Cross-package integration tests live in `tests/`; each package keeps its own API/unit tests. GitHub Actions runs the suite on Node.js 22 and 24 against the current Pi target. When a new Pi release becomes the target, update the root and all package development dependencies, regenerate the lockfile, and run the full checks. A separate older-version compatibility matrix is not maintained. Example tests validate structural invariants rather than exact model IDs or reviewer counts.
 
 Usage requests are cancelled on session shutdown or reload. Codex also cancels obsolete requests when switching between regular and Spark quotas. No live credentials are needed for automated tests.
 
-## Third-party packages
-
-`@tmustier/pi-usage-extension` and `@tmustier/pi-raw-paste` are MIT-licensed packages maintained by Thomas Mustier. They are installed from npm and are not vendored in this repository. Pi extensions execute with full system access; review package updates before loading them.
+Pi extensions execute with full system access. Review local changes and installed package updates before loading them.

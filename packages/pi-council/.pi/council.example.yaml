@@ -1,0 +1,10 @@
+# Replace model references with models available in your Pi installation.
+# Reviewers use the built-in English correctness contract and read-only tools.
+# The current main session is the Chair; no separate Chair model is configured.
+reviewers:
+  - name: reviewer-a
+    model: provider-a/model-a
+  - name: reviewer-b
+    model: provider-b/model-b
+
+minSuccess: 2

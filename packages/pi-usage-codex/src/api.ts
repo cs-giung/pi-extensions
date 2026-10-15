@@ -1,6 +1,8 @@
 import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
+import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
-const SUBSCRIPTION_PROVIDERS = ["openai-codex", "openai"] as const;
 const CODEX_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage";
 const OPENAI_AUTH_CLAIM = "https://api.openai.com/auth";
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -13,12 +15,16 @@ export interface CodexUsageWindow {
 
 export interface CodexUsage {
   label: "codex" | "spark";
+  authSource?: "Pi openai" | "Pi openai-codex" | "Codex CLI";
   primary?: CodexUsageWindow;
   secondary?: CodexUsageWindow;
 }
 
 export class CodexAuthUnavailableError extends Error {
-  public constructor(message = "OpenAI Codex subscription auth is unavailable") {
+  public constructor(
+    message = "OpenAI Codex subscription auth is unavailable",
+    readonly reason: "missing" | "incompatible_oauth" | "codex_cli_unavailable" | "codex_cli_expired" = "missing",
+  ) {
     super(message);
     this.name = "CodexAuthUnavailableError";
   }
@@ -45,7 +51,7 @@ export async function fetchCodexUsage(
   fetchImpl: Fetch = globalThis.fetch,
   signal?: AbortSignal,
 ): Promise<CodexUsage> {
-  const { accessToken, accountId } = await resolveSubscriptionAuth(registry, signal);
+  const { accessToken, accountId, authSource } = await resolveSubscriptionAuth(registry, signal);
   const response = await fetchImpl(CODEX_USAGE_URL, {
     headers: {
       accept: "application/json",
@@ -60,45 +66,82 @@ export async function fetchCodexUsage(
   }
 
   const payload: unknown = await response.json();
-  return parseCodexUsage(payload, modelId, Date.now());
+  return { ...parseCodexUsage(payload, modelId, Date.now()), authSource };
 }
 
 async function resolveSubscriptionAuth(
   registry: Registry,
   signal?: AbortSignal,
-): Promise<{ accessToken: string; accountId: string }> {
-  for (const provider of SUBSCRIPTION_PROVIDERS) {
+): Promise<{ accessToken: string; accountId: string; authSource: NonNullable<CodexUsage["authSource"]> }> {
+  let incompatibleOAuth = false;
+  for (const provider of ["openai", "openai-codex"] as const) {
     signal?.throwIfAborted();
     const auth = await registry.getProviderAuth(provider);
     signal?.throwIfAborted();
-    // The new OpenAI provider also accepts API keys, which must never be sent to ChatGPT.
-    if (provider === "openai" && auth?.source !== "OAuth") continue;
-    const accessToken = auth?.auth.apiKey?.trim();
+    // API keys must never be sent to the ChatGPT subscription endpoint.
+    if (auth?.source !== "OAuth") continue;
+    const accessToken = auth.auth.apiKey?.trim();
     if (!accessToken) continue;
     try {
-      return { accessToken, accountId: extractAccountId(accessToken) };
+      return { accessToken, accountId: extractAccountId(accessToken), authSource: `Pi ${provider}` };
     } catch (error) {
       if (!(error instanceof CodexAuthUnavailableError)) throw error;
+      // Pi's new Responses API OAuth tokens have encrypted metadata, not a Codex account ID.
+      incompatibleOAuth = true;
     }
   }
-  throw new CodexAuthUnavailableError();
+
+  signal?.throwIfAborted();
+  const codexAuthPath = join(process.env.CODEX_HOME?.trim() || join(homedir(), ".codex"), "auth.json");
+  let contents: string;
+  try {
+    contents = await readFile(codexAuthPath, { encoding: "utf8", signal });
+  } catch (error) {
+    signal?.throwIfAborted();
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new CodexAuthUnavailableError(undefined, "codex_cli_unavailable");
+    }
+    throw new CodexAuthUnavailableError(undefined, incompatibleOAuth ? "incompatible_oauth" : "missing");
+  }
+  signal?.throwIfAborted();
+  try {
+    const root = asRecord(JSON.parse(contents));
+    const tokens = asRecord(root?.tokens);
+    const accessToken = asString(tokens?.access_token)?.trim();
+    if (!accessToken || (root?.auth_mode !== undefined && root.auth_mode !== "chatgpt")) {
+      throw new CodexAuthUnavailableError(undefined, "codex_cli_unavailable");
+    }
+    const { accountId, expiresAt } = parseSubscriptionToken(accessToken);
+    if (tokens?.account_id !== undefined && tokens.account_id !== accountId) {
+      throw new CodexAuthUnavailableError(undefined, "codex_cli_unavailable");
+    }
+    if (expiresAt !== undefined && expiresAt <= Date.now()) {
+      // Never refresh CLI-owned credentials: rotating its refresh token can break the CLI.
+      throw new CodexAuthUnavailableError(undefined, "codex_cli_expired");
+    }
+    return { accessToken, accountId, authSource: "Codex CLI" };
+  } catch (error) {
+    if (error instanceof CodexAuthUnavailableError && error.reason !== "missing") throw error;
+    throw new CodexAuthUnavailableError(undefined, "codex_cli_unavailable");
+  }
 }
 
 export function extractAccountId(accessToken: string): string {
-  const payloadPart = accessToken.split(".")[1];
-  if (!payloadPart) throw new CodexAuthUnavailableError("OpenAI Codex OAuth token is invalid");
+  return parseSubscriptionToken(accessToken).accountId;
+}
 
+function parseSubscriptionToken(accessToken: string): { accountId: string; expiresAt: number | undefined } {
+  let claims: Record<string, unknown> | undefined;
   try {
-    const payload: unknown = JSON.parse(Buffer.from(payloadPart, "base64url").toString("utf8"));
-    const record = asRecord(payload);
-    const auth = asRecord(record?.[OPENAI_AUTH_CLAIM]);
-    const accountId = auth?.chatgpt_account_id;
-    if (typeof accountId !== "string" || !accountId.trim()) throw new Error("missing account ID");
-    return accountId;
-  } catch (error) {
-    if (error instanceof CodexAuthUnavailableError) throw error;
+    claims = asRecord(JSON.parse(Buffer.from(accessToken.split(".")[1] ?? "", "base64url").toString("utf8")));
+  } catch {
+    throw new CodexAuthUnavailableError("OpenAI Codex OAuth token is invalid");
+  }
+  const accountId = asRecord(claims?.[OPENAI_AUTH_CLAIM])?.chatgpt_account_id;
+  if (typeof accountId !== "string" || !accountId.trim()) {
     throw new CodexAuthUnavailableError("OpenAI Codex OAuth token has no account ID");
   }
+  return { accountId, expiresAt: typeof claims?.exp === "number" ? claims.exp * 1000 : undefined };
 }
 
 export function parseCodexUsage(payload: unknown, modelId: string, capturedAt: number): CodexUsage {
