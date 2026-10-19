@@ -3,7 +3,7 @@ import { getKeybindings } from "@earendil-works/pi-tui";
 import type { Amount, ParsedFile, Snapshot, UsageRecord } from "../src/model.js";
 import { parseEntry } from "../src/scan.js";
 export const uiTheme = { fg: (_name: string, text: string) => `\u001b[36m${text}\u001b[39m`,
-  bg: (_name: string, text: string) => `\u001b[44m${text}\u001b[49m` } as unknown as Theme;
+  bg: (_name: string, text: string) => `\u001b[44m${text}\u001b[49m`, bold: (text: string) => `\u001b[1m${text}\u001b[22m` } as unknown as Theme;
 export const uiKeys = getKeybindings() as KeybindingsManager;
 
 export const NOW = new Date(2026, 6, 22, 12).getTime();

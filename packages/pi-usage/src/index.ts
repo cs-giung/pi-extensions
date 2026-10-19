@@ -24,13 +24,13 @@ export default function usageExtension(pi: ExtensionAPI): void {
         if (ctx.mode === "tui") {
           await ctx.ui.custom<void>((tui, theme, keybindings, done) => {
             const component = new UsageView({ cwd: ctx.cwd, period, theme, keybindings,
-              height: () => tui.terminal.rows, render: () => tui.requestRender(), close: () => done(),
+              height: () => Math.max(1, Math.min(30, tui.terminal.rows - 2)), render: () => tui.requestRender(), close: () => done(),
               load: (signal, progress) => scanner.scan({ root, extraFile, signal: AbortSignal.any([signal, abort.signal]), progress }),
             });
             view = component;
             void component.refresh();
             return component;
-          });
+          }, { overlay: true, overlayOptions: { width: 132, margin: 1 } });
         } else {
           const snapshot = await scanner.scan({ root, extraFile, signal: abort.signal });
           abort.signal.throwIfAborted();

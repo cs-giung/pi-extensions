@@ -35,10 +35,12 @@ export function rows(slice: Slice, expanded: ReadonlySet<string>): DisplayRow[] 
     provider: provider.name, stats: provider.stats }, ...(expanded.has(provider.name)
     ? provider.models.map((model) => ({ name: `    ${model.name}`, provider: provider.name, stats: model.stats })) : [])]);
 }
-export function tableLayout(width: number) {
+export function tableLayout(width: number, detailed = true) {
   const safeWidth = Math.max(0, width);
-  const sets = [columns, columns.slice(0, 4), columns.slice(2, 4), columns.slice(3, 4), []];
-  const selected = sets.find((list) => list.reduce((sum, col) => sum + col.width + 1, 0) + 18 <= safeWidth) ?? [];
+  // Keep cost visible longest. The interactive overview hides token breakdowns until requested.
+  const core = [columns[2]!, columns[3]!, columns[1]!, columns[0]!];
+  const sets = [detailed ? [...core, ...columns.slice(4)] : core, core, core.slice(0, 2), core.slice(0, 1), []];
+  const selected = sets.find((list) => list.reduce((sum, col) => sum + col.width + 1, 0) + 14 <= safeWidth) ?? [];
   const nameWidth = Math.max(0, safeWidth - selected.reduce((sum, col) => sum + col.width + 1, 0));
   return {
     header: cell("Provider / Model", nameWidth) + selected.map((col) => " " + cell(col.label, col.width, true)).join(""),

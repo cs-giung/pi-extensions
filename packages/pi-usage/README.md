@@ -38,9 +38,15 @@ The default is Today, across all projects. Periods use the local timezone (`TZ` 
 | `s` | Sort by recorded cost, tokens, or calls |
 | `p` | Toggle all projects / exact current working directory |
 | `r` | Refresh from disk |
+| `d` | Toggle summary / token-breakdown columns |
+| `?` | Open keyboard help, accounting notes, and scan diagnostics; Up/Down/PageUp/PageDown scroll |
 | `q` / Escape / Ctrl+C | Close and cancel any pending scan |
 
-Pi's configured selection/navigation keybindings are honored. Search uses Pi's input component and focus handling. Columns adapt to terminal width; narrow terminals hide less important columns. Rows scroll within the available height. The total always reflects the current period, project, search, and hidden-provider slice. Filtering a model also recomputes its provider subtotal from only matching models.
+The screen uses the same visual language as Prompt Stash: a rounded floating frame in Pi's active border color, a quiet header, clear selection marker and background, minimal separators, and a pinned action bar. Below 24 columns or 10 rows, the frame is omitted to preserve space for content. Totals sit above the table. The default overview shows recorded cost, tokens, calls, and sessions; `d` reveals the input/output/cache breakdown when width permits. Columns adapt to terminal width with cost given priority. The centered overlay is capped at 132 columns and 30 rows, shrinking to fit smaller terminals.
+
+Pi's configured selection/navigation keybindings are honored, and the primary action/close hints reflect remappings. Search uses Pi's input component and focus handling. Rows scroll within the available height; short terminals prioritize the selected row and exit hint. `?` opens scrollable help without changing filters or selection; `?` or Escape returns to the table, while `q` or Ctrl+C closes it. While searching, `?` is ordinary text.
+
+The total always reflects the current period, project, search, and hidden-provider slice. Filtering a model also recomputes its provider subtotal from only matching models. Loading, empty results, data warnings, and refresh failures have distinct states. A failed refresh keeps the previous snapshot visible and marks it as stale; detailed cache/deduplication/reconciliation diagnostics live in help rather than crowding the default screen.
 
 Non-TUI modes use a text-table notification rather than a custom screen. No assistant response or inference is triggered. Display-only state resets when the table closes. The screen is a snapshot: press `r` to see later activity.
 
@@ -82,4 +88,4 @@ The existing Codex, DeepSeek, and Z.ai quota/balance footer extensions remain se
 npm run check
 ```
 
-Tests cover parsing, cache invalidation, cancellation, nested provenance, copied history, period boundaries, filtered totals, narrow/Unicode terminal rendering, keyboard interaction, and command lifecycle. Fixtures are synthetic; no live provider calls are required.
+Tests cover parsing, cache invalidation, cancellation, nested provenance, copied history, period boundaries, filtered totals, narrow/Unicode terminal rendering, keyboard interaction, and command lifecycle. Shared visual conventions and wide/narrow layout snapshots are covered by `tests/ui-design.test.ts` at the repository root; see [UI design notes](../../docs/ui-design.md). Fixtures are synthetic; no live provider calls are required.
