@@ -14,7 +14,7 @@ cp packages/pi-aufheben/.pi/aufheben.example.yaml .pi/aufheben.yaml
 Replace both example model references with accessible `provider/model-id` values. The root Pi package includes this extension. For standalone installation:
 
 ```bash
-pi install ~/pi-extensions/packages/pi-aufheben
+pi install ~/git/pi-extensions/packages/pi-aufheben
 ```
 
 Project trust is required. `/aufheben` validates both configured models before starting child inference. There is no model fallback. Additional role prompts supplement fixed contracts; the main Synthesizer uses the current session's model. Role configuration is snapshotted per exploration, so edits apply to new explorations only.

@@ -33,9 +33,12 @@ The root Pi manifest loads all seven local packages. `.pi/settings.json` loads o
 
 ## Setup
 
-Node.js 22.19 or newer is required. Only the latest Pi release is targeted, currently v1.2.0. Development dependencies pin that version for reproducible checks; older Pi versions are not maintained. Install the local package dependencies:
+The default checkout location is `~/git/pi-extensions`. Installation examples below use that path; adjust it if your checkout lives elsewhere.
+
+Node.js 22.19 or newer is required. Only the latest Pi release is targeted, currently v1.4.0. Development dependencies pin that version for reproducible checks; older Pi versions are not maintained. Install the local package dependencies:
 
 ```bash
+cd ~/git/pi-extensions
 npm install
 ```
 
@@ -45,7 +48,7 @@ Start Pi in this repository and trust the project when prompted. Pi loads the se
 
 The footer indicators appear together whenever compatible credentials are available, regardless of the selected model. They refresh 30 seconds after completed requests, back off on failures, and honor `Retry-After`. Missing credentials hide an indicator; refresh failures mark cached values `(stale)`. Use `/usage-*-status` for safe polling diagnostics.
 
-- [Codex](packages/pi-usage-codex/README.md): subscription quota via compatible Pi OAuth or read-only Codex CLI credentials. Pi 1.2.0's new `openai` OAuth needs the legacy `openai-codex` provider or CLI fallback. API keys are never used, and CLI credentials are never refreshed or modified.
+- [Codex](packages/pi-usage-codex/README.md): subscription quota via compatible Pi OAuth or read-only Codex CLI credentials. New `openai` OAuth tokens without a Codex account ID need the legacy `openai-codex` provider or CLI fallback. On a new machine, authenticate separately with `/login openai-codex` or Codex CLI; a working `/login openai` alone may not show quota. Use `/usage-codex-status` to diagnose a hidden indicator. API keys are never used, and CLI credentials are never refreshed or modified.
 - [DeepSeek](packages/pi-usage-deepseek/README.md): the authenticated account's monetary balance.
 - [Z.ai](packages/pi-usage-zai/README.md): spendable pay-as-you-go USD balance, not Coding Plan quota. Set `ZAI_API_KEY` or authenticate the `zai` provider.
 
@@ -94,13 +97,13 @@ The dashboard reads local session accounting without model calls or network requ
 To load the extensions independently outside this repository, install each package from its directory:
 
 ```bash
-pi install ~/pi-extensions/packages/pi-aufheben
-pi install ~/pi-extensions/packages/pi-council
-pi install ~/pi-extensions/packages/pi-prompt-stash
-pi install ~/pi-extensions/packages/pi-usage
-pi install ~/pi-extensions/packages/pi-usage-codex
-pi install ~/pi-extensions/packages/pi-usage-deepseek
-pi install ~/pi-extensions/packages/pi-usage-zai
+pi install ~/git/pi-extensions/packages/pi-aufheben
+pi install ~/git/pi-extensions/packages/pi-council
+pi install ~/git/pi-extensions/packages/pi-prompt-stash
+pi install ~/git/pi-extensions/packages/pi-usage
+pi install ~/git/pi-extensions/packages/pi-usage-codex
+pi install ~/git/pi-extensions/packages/pi-usage-deepseek
+pi install ~/git/pi-extensions/packages/pi-usage-zai
 ```
 
 The local packages remain linked to this repository; run `/reload` after changing their code. `/council` reads `.pi/council.yaml` from the directory where Pi is running, so each project may keep a separate council configuration.
@@ -113,7 +116,9 @@ Validate all personal packages after changing code or configuration examples:
 npm run check
 ```
 
-Checks cover TypeScript, prompt stash persistence/locking/restoration and picker behavior, provider parsing, polling/backoff/cancellation, Council preflight and concurrency, Aufheben rounds/intervention/recovery, real-SDK integration with fake providers, active-session cleanup, branch-aware restoration, package-manifest consistency, and package contents. Cross-package integration tests live in `tests/`; each package keeps its own API/unit tests. GitHub Actions runs the suite on Node.js 22 and 24 against the current Pi target. When a new Pi release becomes the target, update the root and all package development dependencies, regenerate the lockfile, and run the full checks. A separate older-version compatibility matrix is not maintained. Example tests validate structural invariants rather than exact model IDs or reviewer counts.
+Checks cover TypeScript, prompt stash persistence/locking/restoration and picker behavior, provider parsing, polling/backoff/cancellation, Council preflight and concurrency, Aufheben rounds/intervention/recovery, real-SDK integration with fake providers, active-session cleanup, branch-aware restoration, package-manifest consistency, and package contents. Cross-package integration tests live in `tests/`; each package keeps its own API/unit tests. GitHub Actions runs the suite on Node.js 22, 24, and 26 against the current Pi target and audits dependencies for high-severity advisories. When a new Pi release becomes the target, update the root and all package development dependencies, regenerate the lockfile, and run the full checks. A separate older-version compatibility matrix is not maintained. Example tests validate structural invariants rather than exact model IDs or reviewer counts.
+
+Run `npm audit` from the repository root to check both runtime and development dependencies. Zod's minimum version includes its constrained-collection validation fix. Until Pi updates its pinned Undici dependency, the root development install overrides Undici to `^8.12.2`; the lockfile records the tested resolution. Run development installs and checks from this root so that override applies. These repository updates do **not** patch the separately installed Pi CLI or dependencies supplied by it. Update the host through Pi's supported installer/update flow when a patched release is available; do not edit its managed installation in place.
 
 Usage requests are cancelled on session shutdown or reload. Codex also cancels obsolete requests when switching between regular and Spark quotas. No live credentials are needed for automated tests.
 

@@ -13,7 +13,7 @@ const keys = new KeybindingsManager(TUI_KEYBINDINGS);
 const stashes = [
   { id: 1, timestamp: 1, text: "Review the API changes\nCheck error handling and backwards compatibility.\nKeep the public surface small." },
   { id: 2, timestamp: 2, text: "Draft release notes\nSummarize the changes and verification steps." },
-  { id: 3, timestamp: 3, text: "Improve the terminal UI\n\nUse a clear hierarchy and quieter secondary text.\nKeep primary actions visible at small sizes.\nPreserve Korean text: 한글과 emoji 👩‍💻." },
+  { id: 3, timestamp: 3, text: "Improve the terminal UI\n\nUse a clear hierarchy and quieter secondary text.\nKeep primary actions visible at small sizes.\nPreserve Korean text: \uD55C\uAE00\uACFC emoji 👩‍💻." },
 ];
 const plain = (lines: string[]) => lines.map((line) => line.replace(/\x1b\[0m/g, "").trimEnd()).join("\n");
 afterEach(() => vi.restoreAllMocks());
@@ -25,7 +25,7 @@ it("keeps the small design primitives mirrored without cross-package runtime imp
 describe.each([["stash", stashUI], ["usage", usageUI]] as const)("%s design primitives", (_name, ui) => {
   it("pins a body row and an exit hint at tiny heights, without overflowing Unicode widths", () => {
     for (const width of [0, 1, 8, 20, 23, 24, 40, 80, 120]) for (const height of [1, 2, 3, 5, 9, 10, 12, 24]) {
-      const lines = ui.panel(theme, width, height, () => ["Title", "Search", "Rule"], () => ["Rule", "Status", "Esc Close"], () => ["한글 👩‍💻 row"]);
+      const lines = ui.panel(theme, width, height, () => ["Title", "Search", "Rule"], () => ["Rule", "Status", "Esc Close"], () => ["\uD55C\uAE00 👩‍💻 row"]);
       expect(lines).toHaveLength(height);
       expect(lines.every((line) => visibleWidth(line) <= width)).toBe(true);
       const framed = width >= 24 && height >= 10;
@@ -58,7 +58,7 @@ describe.each([["stash", stashUI], ["usage", usageUI]] as const)("%s design prim
   });
   it("preserves the full selection background after truncating long Unicode titles", () => {
     const colored = { ...theme, bg: (_: string, text: string) => `\x1b[44m${text}\x1b[49m` } as Theme;
-    const line = ui.selectedLine(colored, "한글 👩‍💻 ".repeat(50), 18);
+    const line = ui.selectedLine(colored, "\uD55C\uAE00 👩‍💻 ".repeat(50), 18);
     expect(line).toContain("\x1b[44m"); expect(line).not.toContain("\x1b[0m"); expect(visibleWidth(line)).toBe(18);
   });
   it("resolves status after the body clamps scroll positions", () => {

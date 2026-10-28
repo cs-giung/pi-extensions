@@ -40,7 +40,7 @@ The repository root already registers this extension. In this repository, run `/
 For user-wide loading outside this repository:
 
 ```bash
-pi install ~/pi-extensions/packages/pi-prompt-stash
+pi install ~/git/pi-extensions/packages/pi-prompt-stash
 ```
 
 Or try it once:

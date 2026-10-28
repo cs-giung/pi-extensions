@@ -74,9 +74,19 @@ async function resolveSubscriptionAuth(
   signal?: AbortSignal,
 ): Promise<{ accessToken: string; accountId: string; authSource: NonNullable<CodexUsage["authSource"]> }> {
   let incompatibleOAuth = false;
+  let resolutionFailed = false;
   for (const provider of ["openai", "openai-codex"] as const) {
     signal?.throwIfAborted();
-    const auth = await registry.getProviderAuth(provider);
+    let auth: Awaited<ReturnType<Registry["getProviderAuth"]>>;
+    try {
+      auth = await registry.getProviderAuth(provider);
+    } catch {
+      signal?.throwIfAborted();
+      // A failed Pi token refresh must not block another Pi provider or CLI auth.
+      // Never retain or display arbitrary credential-resolution errors.
+      resolutionFailed = true;
+      continue;
+    }
     signal?.throwIfAborted();
     // API keys must never be sent to the ChatGPT subscription endpoint.
     if (auth?.source !== "OAuth") continue;
@@ -100,6 +110,11 @@ async function resolveSubscriptionAuth(
     signal?.throwIfAborted();
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
       throw new CodexAuthUnavailableError(undefined, "codex_cli_unavailable");
+    }
+    if (resolutionFailed) {
+      // Unlike missing credentials, resolution failures may be transient. Keep
+      // cached quota stale and back off rather than hiding it as unauthenticated.
+      throw new Error("Pi OAuth resolution failed and Codex CLI credentials are missing");
     }
     throw new CodexAuthUnavailableError(undefined, incompatibleOAuth ? "incompatible_oauth" : "missing");
   }

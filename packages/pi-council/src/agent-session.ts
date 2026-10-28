@@ -118,14 +118,36 @@ export async function runConfiguredSession(options: RunConfiguredSessionOptions)
   let activityTimeout: ActivityTimeout | undefined;
   let unsubscribe: (() => void) | undefined;
   let abortListener: (() => void) | undefined;
+  const operation = new AbortController();
+  const disposed = new WeakSet<AgentSession>();
+  const dispose = (value: AgentSession): void => {
+    if (disposed.has(value)) return;
+    disposed.add(value);
+    value.dispose();
+  };
 
   try {
-    await resourceLoader.reload();
-    throwIfAborted(signal);
+    // The same deadline covers initialization, inference, and the bounded repair.
+    abortListener = () => operation.abort(new SessionExecutionError("cancelled", "Agent run was cancelled"));
+    if (signal?.aborted) abortListener();
+    else signal?.addEventListener("abort", abortListener, { once: true });
+    activityTimeout = new ActivityTimeout({
+      idleTimeoutMs,
+      maxDurationMs,
+      onTimeout: (reason) => {
+        const message = reason === "idle-timeout"
+          ? `Agent was inactive for ${idleTimeoutMs} ms`
+          : `Agent exceeded the maximum duration of ${maxDurationMs} ms`;
+        operation.abort(new SessionExecutionError(reason, message));
+      },
+    });
+    operation.signal.throwIfAborted();
+    await waitForOperation(resourceLoader.reload(), operation.signal);
+    operation.signal.throwIfAborted();
     manager = options.worker ? openWorker(options.worker, cwd, parentSession)
       : createCouncilSessionManager({ cwd, sessionName, parentSession });
     if (options.worker) oldIds = new Set(manager.getBranch().map((entry) => entry.id));
-    ({ session } = await createAgentSession({
+    const creation = createAgentSession({
       cwd,
       model,
       modelRuntime,
@@ -133,8 +155,16 @@ export async function runConfiguredSession(options: RunConfiguredSessionOptions)
       tools: config.tools,
       resourceLoader,
       sessionManager: manager,
-    }));
-    throwIfAborted(signal);
+    });
+    // Creation itself cannot be aborted. Release a late SDK handle even after
+    // the caller has stopped waiting, without prompting or checkpointing it.
+    void creation.then(async (created) => {
+      if (!operation.signal.aborted) return;
+      try { await created.session.abort().catch(() => undefined); }
+      finally { dispose(created.session); }
+    }, () => undefined).catch(() => undefined);
+    ({ session } = await waitForOperation(creation, operation.signal));
+    operation.signal.throwIfAborted();
 
     let lastProgress = "";
     unsubscribe = session.subscribe((event) => {
@@ -161,43 +191,14 @@ export async function runConfiguredSession(options: RunConfiguredSessionOptions)
       }
     });
 
-    const cancellationPromise = signal
-      ? new Promise<never>((_resolve, reject) => {
-          abortListener = () => {
-            reject(new SessionExecutionError("cancelled", "Agent run was cancelled"));
-          };
-          if (signal.aborted) {
-            abortListener();
-          } else {
-            signal.addEventListener("abort", abortListener, { once: true });
-          }
-        })
-      : undefined;
-
-    const timeoutPromise = new Promise<never>((_resolve, reject) => {
-      activityTimeout = new ActivityTimeout({
-        idleTimeoutMs,
-        maxDurationMs,
-        onTimeout: (reason) => {
-          const message =
-            reason === "idle-timeout"
-              ? `Agent was inactive for ${idleTimeoutMs} ms`
-              : `Agent exceeded the maximum duration of ${maxDurationMs} ms`;
-          reject(new SessionExecutionError(reason, message));
-        },
-      });
-    });
-
     let nextPrompt = prompt;
     for (let attempt = 0; attempt < 2; attempt++) {
-      throwIfAborted(signal);
+      operation.signal.throwIfAborted();
       if (attempt) onProgress?.({ phase: "repair" });
-      activityTimeout?.touch();
+      activityTimeout.touch();
       const promptPromise = session.prompt(nextPrompt, { expandPromptTemplates: false, source: "extension" });
-      await (cancellationPromise
-        ? Promise.race([promptPromise, timeoutPromise, cancellationPromise])
-        : Promise.race([promptPromise, timeoutPromise]));
-      throwIfAborted(signal);
+      await waitForOperation(promptPromise, operation.signal);
+      operation.signal.throwIfAborted();
       const content = extractFinalAssistantText(session.state.messages, Boolean(options.validateOutput));
       try { options.validateOutput?.(content); }
       catch (cause) {
@@ -231,7 +232,7 @@ export async function runConfiguredSession(options: RunConfiguredSessionOptions)
     }
     unsubscribe?.();
     activityTimeout?.dispose();
-    session?.dispose();
+    if (session) dispose(session);
     if (manager && options.onAccounting) {
       const accounting = sessionAccounting(manager, oldIds);
       if (accounting) options.onAccounting(accounting);
@@ -270,6 +271,19 @@ export function extractFinalAssistantText(messages: readonly unknown[], preserve
   }
 
   throw new SessionExecutionError("empty-response", "Agent returned an empty response");
+}
+
+/** Stop waiting promptly, while still consuming late resolutions/rejections. */
+function waitForOperation<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) {
+    void promise.catch(() => undefined);
+    return Promise.reject(signal.reason);
+  }
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener("abort", abort, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
+  });
 }
 
 function throwIfAborted(signal: AbortSignal | undefined): void {

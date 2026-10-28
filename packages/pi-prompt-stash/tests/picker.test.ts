@@ -7,7 +7,7 @@ import type { Stash } from "../src/store.js";
 export const theme = { fg: (_: string, text: string) => text, bg: (_: string, text: string) => text, bold: (text: string) => text } as Theme;
 const keys = { "tui.select.up": "up", "tui.select.down": "down", "tui.select.pageUp": "pageUp", "tui.select.pageDown": "pageDown", "tui.select.confirm": "enter", "tui.select.cancel": "escape" } as const;
 export const keybindings = { matches: (data: string, action: keyof typeof keys) => matchesKey(data, keys[action]) } as Pick<KeybindingsManager, "matches">;
-const stashes: Stash[] = Array.from({ length: 20 }, (_, i) => ({ id: i + 1, timestamp: i, text: `프롬프트 ${i + 1} 👩‍💻\n${"본문\n".repeat(40)}` }));
+const stashes: Stash[] = Array.from({ length: 20 }, (_, i) => ({ id: i + 1, timestamp: i, text: `\uD504\uB86C\uD504\uD2B8 ${i + 1} 👩‍💻\n${"\uBCF8\uBB38\n".repeat(40)}` }));
 function harness(entries = stashes) {
   let height = 22; const done = vi.fn(); const render = vi.fn();
   const view = new StashPicker({ stashes: entries, theme, keybindings, height: () => height, render, done });
@@ -91,7 +91,7 @@ describe("searchable stash picker", () => {
     expect(displayText("a\u202eb")).toBe("a�b");
   });
   it("keeps rendered lines bounded after narrow resize, with Unicode and terminal controls", () => {
-    const h = harness([{ id: 1, timestamp: 1, text: "한글 👩‍💻 é\t\x1b[31mred\x1b]52;c;abc\x07\n".repeat(80) }]);
+    const h = harness([{ id: 1, timestamp: 1, text: "\uD55C\uAE00 👩‍💻 é\t\x1b[31mred\x1b]52;c;abc\x07\n".repeat(80) }]);
     for (const height of [24, 12, 6, 1]) for (const width of [120, 86, 60, 20, 5, 2, 0]) {
       h.height(height); h.view.invalidate(); const lines = h.view.render(width);
       expect(lines.length).toBeLessThanOrEqual(height);

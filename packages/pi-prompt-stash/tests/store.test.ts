@@ -16,7 +16,7 @@ describe("prompt stash storage", () => {
   it("does not create files on read; saves exact multiline/Unicode text privately", () => {
     expect(store.read()).toEqual({ nextId: 1, stashes: [], shortcut: "ctrl+shift+s" });
     expect(readdirSync(dir)).toEqual([]);
-    const text = "  한글 👩‍💻 é\nsecond\tline\n";
+    const text = "  \uD55C\uAE00 👩‍💻 é\nsecond\tline\n";
     expect(store.save(text).result).toMatchObject({ id: 1, text });
     expect(new StashStore(store.file).read().stashes[0]?.text).toBe(text);
     if (process.platform !== "win32") expect(statSync(store.file).mode & 0o777).toBe(0o600);

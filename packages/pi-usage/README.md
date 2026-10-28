@@ -6,10 +6,10 @@ This is an independently implemented package. The expandable provider/model Tabl
 
 ## Installation
 
-Requires Node.js 22.19+ and the current Pi target, 1.2.0. The root repository manifest loads this package automatically. For standalone use:
+Requires Node.js 22.19+ and the current Pi target, 1.4.0. The root repository manifest loads this package automatically. For standalone use:
 
 ```bash
-pi install ~/pi-extensions/packages/pi-usage
+pi install ~/git/pi-extensions/packages/pi-usage
 ```
 
 Run `/reload` after changing source. If the former third-party dashboard was installed separately in personal Pi settings, remove that installation before loading this package to avoid duplicate `/usage` commands. Removing a project declaration does not modify personal settings or delete npm caches.

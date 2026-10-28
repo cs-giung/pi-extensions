@@ -9,6 +9,7 @@ interface Manifest {
   files: string[];
   pi: { extensions: string[] };
   devDependencies: Record<string, string>;
+  dependencies?: Record<string, string>;
 }
 function readManifest(directory: string): Manifest {
   return JSON.parse(readFileSync(resolve(directory, "package.json"), "utf8")) as Manifest;
@@ -36,6 +37,9 @@ describe("package manifests", () => {
     const manifest = readManifest(directory);
     expect(manifest.name).toBe(name);
     expect(manifest.devDependencies).toEqual(rootManifest.devDependencies);
+    if (manifest.dependencies?.zod) {
+      expect(manifest.dependencies.zod).toBe(rootManifest.dependencies?.zod);
+    }
     expect(manifest.files).toEqual(expect.arrayContaining(["src", "README.md", "LICENSE"]));
     for (const path of manifest.files) {
       expect(["src", "README.md", "LICENSE"].includes(path) || /^\.pi\/[^/]+\.example\.yaml$/.test(path),

@@ -19,7 +19,7 @@ Run `/usage-deepseek-status` to see the last successful refresh, safe error cate
 Install the local package from this repository:
 
 ```bash
-pi install ./packages/pi-usage-deepseek
+pi install ~/git/pi-extensions/packages/pi-usage-deepseek
 ```
 
 No configuration is required. Configure a DeepSeek API key through Pi or `DEEPSEEK_API_KEY`.

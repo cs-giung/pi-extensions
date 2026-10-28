@@ -36,8 +36,8 @@ describe("standalone prompt stash extension", () => {
   it("registers only a user command and shortcut; restores state after reload/new sessions", async () => {
     const h = harness(); expect(h.registerCommand).toHaveBeenCalledWith("stash", expect.any(Object));
     expect(h.registerShortcut).toHaveBeenCalledWith("ctrl+shift+s", expect.any(Object));
-    h.setText("draft\n한글"); await h.save(); expect(h.text()).toBe("");
-    expect(store.read().stashes[0]?.text).toBe("draft\n한글");
+    h.setText("draft\n\uD55C\uAE00"); await h.save(); expect(h.text()).toBe("");
+    expect(store.read().stashes[0]?.text).toBe("draft\n\uD55C\uAE00");
     h.event("session_start"); expect(h.ctx.ui.setWidget).toHaveBeenLastCalledWith("prompt-stash", expect.any(Function));
     const reloaded = harness(); reloaded.event("session_start");
     expect(reloaded.ctx.ui.setWidget).toHaveBeenLastCalledWith("prompt-stash", expect.any(Function));

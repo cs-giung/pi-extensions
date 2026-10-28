@@ -13,7 +13,7 @@ Shows the account's **available USD balance**, not Coding Plan credits or quota.
 The repository root package includes this extension. For a separate user-wide install:
 
 ```bash
-pi install ./packages/pi-usage-zai
+pi install ~/git/pi-extensions/packages/pi-usage-zai
 ```
 
 Configure the `zai` provider in Pi or set `ZAI_API_KEY`, then `/reload`. No Coding Plan subscription or browser cookie is required.

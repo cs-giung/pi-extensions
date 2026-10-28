@@ -4,7 +4,7 @@ Independent Reviewer sessions, with the **existing main Pi session as Chair**. `
 
 ## Setup
 
-Requires Node.js 22.19 or newer and the latest Pi release, currently 1.2.0. From the repository root:
+Requires Node.js 22.19 or newer and the latest Pi release, currently 1.4.0. From the repository root:
 
 ```bash
 npm install
@@ -14,7 +14,7 @@ cp packages/pi-council/.pi/council.example.yaml .pi/council.yaml
 Replace the example Reviewer `provider/model-id` placeholders with accessible models. The minimal example uses the built-in correctness instructions, `medium` thinking, and read-only tools. Add optional settings only when needed; available settings are documented below. The root Pi package loads this extension after project trust. For standalone user-wide installation:
 
 ```bash
-pi install ~/pi-extensions/packages/pi-council
+pi install ~/git/pi-extensions/packages/pi-council
 ```
 
 Run `/reload` after changing source code. Reviewer configuration is snapshotted for a Council series. `/council-next` keeps that roster, prompts, tools, and deadlines; a fresh `/council` reads configuration again. Authentication is resolved normally, including trusted extension-registered providers.
@@ -81,8 +81,8 @@ Reviewers write their own prose in **English**, even when the original request o
 - `chair.systemPrompt`: optional additional instructions for the main-session Chair. No `chair.model`, `chair.thinking`, or `chair.tools` settings exist; use Pi's normal main-session controls.
 - `minSuccess`: required minimum usable reviews before a successful Chair synthesis.
 - `maxConcurrency`: maximum active Reviewers, default `4`.
-- `idleTimeoutMs`: prompt inactivity timeout per Reviewer, default `120000`; session events reset it.
-- `maxDurationMs`: absolute timeout for each Reviewer's initial prompt plus any format repair, default `900000`. Queueing/setup and main synthesis are excluded. Neither timer bounds the whole Council.
+- `idleTimeoutMs`: inactivity timeout per Reviewer, including initialization, default `120000`; session events reset it.
+- `maxDurationMs`: absolute timeout for each Reviewer's resource loading, SDK session creation, initial prompt, and any format repair, default `900000`. Queueing, shared runtime preflight, and main synthesis are excluded. Neither timer bounds the whole Council.
 
 Timer values must be positive integers no larger than `2147483647`, and maximum duration must be at least the idle timeout. Reviewer tools accept built-ins only: `read`, `bash`, `powershell`, `edit`, `write`, `grep`, `find`, and `ls`. Unknown/duplicate tools are rejected. Children disable extension, skill, template, theme, and context-file discovery. Only enable mutating tools deliberately, especially with parallel Reviewers; read-only tool selection is not a filesystem sandbox.
 
@@ -92,7 +92,7 @@ Fixed Reviewer instructions request severity-tagged concerns with evidence, impa
 
 ## Cancellation, persistence, and copying
 
-Cancellation aborts only Council-owned work, never unrelated main-session work. Queued Reviewers do not start after cancellation. Late results cannot replace the previous report or become a successful Chair answer. Failures below `minSuccess` preserve an inspectable report, but no successful synthesis is recorded. If the user steers an active run, its former brief is not silently treated as approval for another batch.
+Cancellation aborts only Council-owned work, never unrelated main-session work. It stops waiting even during resource loading or SDK session creation. An SDK handle that resolves after cancellation or timeout is aborted and disposed without prompting or checkpointing; already-active sessions finish abort/cleanup before a new batch can start. Queued Reviewers do not start after cancellation. Late results cannot replace the previous report or become a successful Chair answer. Failures below `minSuccess` preserve an inspectable report, but no successful synthesis is recorded. If the user steers an active run, its former brief is not silently treated as approval for another batch.
 
 Main-session custom entries preserve versioned run snapshots, completed reports, and the actual normally emitted Chair answer. Report/copy restoration reads only the active branch, so abandoned `/tree` branches do not leak results. Reload/resume marks unfinished work interrupted without restarting inference; use `/council-next` explicitly to review again, or `/council` to start fresh. Cancelling main synthesis preserves already completed reviews. Ordinary discussion after a completed Council does not replace its recorded Chair answer.
 

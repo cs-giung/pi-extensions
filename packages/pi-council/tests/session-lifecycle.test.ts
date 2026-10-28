@@ -2,10 +2,11 @@ import { createAgentSession, SessionManager, type ModelRuntime } from "@earendil
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runConfiguredSession, type RunConfiguredSessionOptions } from "../src/agent-session.js";
 
+const { reload } = vi.hoisted(() => ({ reload: vi.fn<() => Promise<void>>() }));
 vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => ({
   ...await importOriginal<typeof import("@earendil-works/pi-coding-agent")>(),
   createAgentSession: vi.fn(),
-  DefaultResourceLoader: class { async reload(): Promise<void> {} },
+  DefaultResourceLoader: class { reload = reload; },
 }));
 
 type Listener = (event: { type: string }) => void;
@@ -34,11 +35,104 @@ function setup() {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.mocked(createAgentSession).mockReset();
+  reload.mockReset().mockResolvedValue(undefined);
   vi.spyOn(SessionManager, "create").mockReturnValue({ appendSessionInfo: vi.fn() } as unknown as SessionManager);
 });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe("configured session lifecycle", () => {
+  it.each(["reload", "creation"] as const)("cancels while %s is still pending and consumes its late rejection", async (stage) => {
+    const { options, session } = setup();
+    const controller = new AbortController();
+    const removeListener = vi.spyOn(controller.signal, "removeEventListener");
+    let reject!: (error: Error) => void;
+    const stalled = new Promise<never>((_resolve, fail) => { reject = fail; });
+    if (stage === "reload") reload.mockReturnValue(stalled);
+    else vi.mocked(createAgentSession).mockReturnValue(stalled);
+    const result = runConfiguredSession({ ...options, signal: controller.signal });
+    const assertion = expect(result).rejects.toMatchObject({ kind: "cancelled" });
+    await vi.advanceTimersByTimeAsync(0);
+    controller.abort();
+    await assertion;
+    expect(session.prompt).not.toHaveBeenCalled();
+    expect(removeListener).toHaveBeenCalledWith("abort", expect.any(Function));
+    expect(vi.getTimerCount()).toBe(0);
+    reject(new Error("Late initialization failure"));
+    await vi.advanceTimersByTimeAsync(0);
+    if (stage === "reload") expect(createAgentSession).not.toHaveBeenCalled();
+  });
+
+  it.each(["reload", "creation"] as const)("bounds a stalled %s with the original maximum duration", async (stage) => {
+    const { options, session } = setup();
+    const stalled = new Promise<never>(() => undefined);
+    if (stage === "reload") reload.mockReturnValue(stalled);
+    else vi.mocked(createAgentSession).mockReturnValue(stalled);
+    const result = runConfiguredSession({ ...options, idleTimeoutMs: 3000 });
+    const assertion = expect(result).rejects.toMatchObject({ kind: "max-duration" });
+    await vi.advanceTimersByTimeAsync(3000);
+    await assertion;
+    expect(session.prompt).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("does not create a session if cancelled resource loading later succeeds", async () => {
+    const { options } = setup();
+    let finishReload!: () => void;
+    reload.mockReturnValue(new Promise((resolve) => { finishReload = resolve; }));
+    const controller = new AbortController();
+    const result = runConfiguredSession({ ...options, signal: controller.signal });
+    const assertion = expect(result).rejects.toMatchObject({ kind: "cancelled" });
+    controller.abort();
+    await assertion;
+    finishReload();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(createAgentSession).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each(["cancelled", "idle-timeout", "max-duration"] as const)("releases a late-created SDK handle after %s without prompting", async (kind) => {
+    const { options, session } = setup();
+    const controller = new AbortController();
+    let finishCreation!: (value: Awaited<ReturnType<typeof createAgentSession>>) => void;
+    vi.mocked(createAgentSession).mockReturnValue(new Promise((resolve) => { finishCreation = resolve; }));
+    const result = runConfiguredSession({ ...options, signal: controller.signal,
+      idleTimeoutMs: kind === "max-duration" ? 3000 : 1000 });
+    const assertion = expect(result).rejects.toMatchObject({ kind });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(createAgentSession).toHaveBeenCalledTimes(1);
+    if (kind === "cancelled") controller.abort();
+    else await vi.advanceTimersByTimeAsync(kind === "idle-timeout" ? 1000 : 3000);
+    await assertion;
+    expect(session.dispose).not.toHaveBeenCalled();
+    finishCreation({ session } as never);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(session.prompt).not.toHaveBeenCalled();
+    expect(session.subscribe).not.toHaveBeenCalled();
+    expect(session.abort).toHaveBeenCalledTimes(1);
+    expect(session.dispose).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("includes initialization time in the inference deadline", async () => {
+    const { options, session, activity } = setup();
+    let finishReload!: () => void;
+    reload.mockReturnValue(new Promise((resolve) => { finishReload = resolve; }));
+    const result = runConfiguredSession(options);
+    const assertion = expect(result).rejects.toMatchObject({ kind: "max-duration" });
+    await vi.advanceTimersByTimeAsync(500);
+    finishReload();
+    await vi.advanceTimersByTimeAsync(0);
+    for (let index = 0; index < 4; index++) {
+      await vi.advanceTimersByTimeAsync(500);
+      activity();
+    }
+    await vi.advanceTimersByTimeAsync(500);
+    await assertion;
+    expect(session.abort).toHaveBeenCalledTimes(1);
+    expect(session.dispose).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("aborts an active session and releases listeners and timers on cancellation", async () => {
     const { options, session, unsubscribe } = setup();
     const controller = new AbortController();
