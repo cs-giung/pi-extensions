@@ -1,0 +1,24 @@
+{
+  "name": "pi-codex-fast",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Session-scoped Codex Fast mode requests for Pi",
+  "type": "module",
+  "files": ["src", "LICENSE", "README.md"],
+  "keywords": ["pi-package", "pi-extension", "codex", "fast"],
+  "pi": { "extensions": ["./src/index.ts"] },
+  "scripts": {
+    "check": "npm run typecheck && npm test",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": { "@earendil-works/pi-coding-agent": "*" },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "1.4.0",
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12"
+  },
+  "engines": { "node": ">=22.19.0" },
+  "license": "MIT"
+}

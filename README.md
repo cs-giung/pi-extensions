@@ -1,6 +1,6 @@
 # Pi extensions
 
-This repository contains seven personal Pi packages. It keeps local extension code, package choices, examples, and verification commands together.
+This repository contains eight personal Pi packages. It keeps local extension code, package choices, examples, and verification commands together.
 
 ## Included packages
 
@@ -8,6 +8,7 @@ This repository contains seven personal Pi packages. It keeps local extension co
 | --- | --- | --- |
 | `packages/pi-aufheben` | `/aufheben`, `/aufheben-next`, `/aufheben-pause`, `/aufheben-status`, `/aufheben-stop` | Develop research ideas with persistent Thesizer/Antithesizer partners and the current main model as Synthesizer. |
 | `packages/pi-council` | `/council`, `/council-next`, `/council-check`, `/council-cancel`, `/council-reviews`, `/council-copy` | Start fresh or continue independent Reviewer histories; the current main-session model synthesizes as Chair. |
+| `packages/pi-codex-fast` | `/fast [on\|off\|status]` | Request Codex Fast mode for eligible ChatGPT OAuth requests, with branch-local persistence. |
 | `packages/pi-prompt-stash` | `/stash [save\|clear\|shortcut [key]]` | Save unfinished editor drafts and restore them from a searchable local picker without losing current input. |
 | `packages/pi-usage-codex` | `/usage-codex-status` | Show Codex subscription quota windows (Spark when selected) and polling diagnostics. |
 | `packages/pi-usage-deepseek` | `/usage-deepseek-status` | Show the current DeepSeek account balance and polling diagnostics. |
@@ -20,6 +21,7 @@ This repository contains seven personal Pi packages. It keeps local extension co
 .pi/settings.json                    Project-local Pi package list
 packages/pi-aufheben/                Persistent dialectical research workflow
 packages/pi-council/                 Independent reviews with main-session Chair
+packages/pi-codex-fast/              Session-scoped Codex Fast request toggle
 packages/pi-prompt-stash/            Persistent editor draft stash and picker
 packages/pi-usage/                   Local historical usage table
 packages/pi-usage-codex/             Personal Codex quota status package
@@ -29,7 +31,7 @@ packages/pi-council/.pi/             Example Council configuration
 package.json                         Root Pi package and development commands
 ```
 
-The root Pi manifest loads all seven local packages. `.pi/settings.json` loads only that root package when Pi runs in this repository.
+The root Pi manifest loads all eight local packages. `.pi/settings.json` loads only that root package when Pi runs in this repository.
 
 ## Setup
 
@@ -42,7 +44,11 @@ cd ~/git/pi-extensions
 npm install
 ```
 
-Start Pi in this repository and trust the project when prompted. Pi loads the seven local extensions.
+Start Pi in this repository and trust the project when prompted. Pi loads the eight local extensions.
+
+### Codex Fast mode
+
+`/fast` toggles Fast requests for the active session branch; `/fast on`, `/fast off`, and `/fast status` provide explicit controls. The default is off. Eligible `openai` and legacy `openai-codex` ChatGPT OAuth requests receive `service_tier: "priority"`; API-key and unrelated provider requests remain unchanged. **Fast requested** indicates intent, not confirmed server activation; **Fast paused** preserves the preference while another model/auth combination is selected. Fast mode can consume subscription limits or credits at a higher rate. See [`packages/pi-codex-fast/README.md`](packages/pi-codex-fast/README.md) for persistence, pricing cautions, and routing limits.
 
 ### Provider quota and balances
 
@@ -99,6 +105,7 @@ To load the extensions independently outside this repository, install each packa
 ```bash
 pi install ~/git/pi-extensions/packages/pi-aufheben
 pi install ~/git/pi-extensions/packages/pi-council
+pi install ~/git/pi-extensions/packages/pi-codex-fast
 pi install ~/git/pi-extensions/packages/pi-prompt-stash
 pi install ~/git/pi-extensions/packages/pi-usage
 pi install ~/git/pi-extensions/packages/pi-usage-codex

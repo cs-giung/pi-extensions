@@ -12,6 +12,7 @@
     "extensions": [
       "./packages/pi-aufheben/src/index.ts",
       "./packages/pi-council/src/index.ts",
+      "./packages/pi-codex-fast/src/index.ts",
       "./packages/pi-prompt-stash/src/index.ts",
       "./packages/pi-usage/src/index.ts",
       "./packages/pi-usage-codex/src/index.ts",
