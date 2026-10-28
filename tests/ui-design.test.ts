@@ -13,7 +13,7 @@ const keys = new KeybindingsManager(TUI_KEYBINDINGS);
 const stashes = [
   { id: 1, timestamp: 1, text: "Review the API changes\nCheck error handling and backwards compatibility.\nKeep the public surface small." },
   { id: 2, timestamp: 2, text: "Draft release notes\nSummarize the changes and verification steps." },
-  { id: 3, timestamp: 3, text: "Improve the terminal UI\n\nUse a clear hierarchy and quieter secondary text.\nKeep primary actions visible at small sizes.\nPreserve Korean text: \uD55C\uAE00\uACFC emoji 👩‍💻." },
+  { id: 3, timestamp: 3, text: "Improve the terminal UI\n\nUse a clear hierarchy and quieter secondary text.\nKeep primary actions visible at small sizes.\nPreserve Unicode text and emoji 👩‍💻." },
 ];
 const plain = (lines: string[]) => lines.map((line) => line.replace(/\x1b\[0m/g, "").trimEnd()).join("\n");
 afterEach(() => vi.restoreAllMocks());

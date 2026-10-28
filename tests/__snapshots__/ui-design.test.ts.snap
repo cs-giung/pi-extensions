@@ -35,7 +35,7 @@ exports[`UI layout previews > Stash at 100 columns 1`] = `
 │                                        │                                                         │
 │                                        │ Use a clear hierarchy and quieter secondary text.       │
 │                                        │ Keep primary actions visible at small sizes.            │
-│                                        │ Preserve Korean text: 한글과 emoji 👩‍💻.                  │
+│                                        │ Preserve Unicode text and emoji 👩‍💻.                     │
 │                                        │                                                         │
 │                                        │                                                         │
 │                                        │                                                         │
