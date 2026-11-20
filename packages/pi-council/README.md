@@ -4,7 +4,7 @@ Independent Reviewer sessions, with the **existing main Pi session as Chair**. `
 
 ## Setup
 
-Requires Node.js 22.19 or newer and the latest Pi release, currently 1.4.0. From the repository root:
+Requires Node.js 22.19 or newer and Pi 1.5.2. From the repository root:
 
 ```bash
 npm install

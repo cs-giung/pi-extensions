@@ -57,3 +57,11 @@ PI_CODING_AGENT_DIR="$(mktemp -d)" pi --no-extensions \
 ```
 
 Use synthetic prompts/history. Check regular and fullscreen modes, light and dark themes, long names, Korean/emoji text, active search, help, details, and live resize. Automated snapshots cannot establish visual contrast or terminal-protocol shortcut support.
+
+## Tool transcript views
+
+`packages/pi-tool-views` applies the same theme-first approach to built-in tool rows. Folded cards use Pi's pending/success/error backgrounds, the configured `outputPad`, a one-line header, and a one-line result summary. Expanded views preserve the native renderer rather than approximating code highlights, diffs, truncation warnings, or timers. Hidden text contributes zero lines; host-owned images are outside this rendering boundary.
+
+Ctrl+O in the main editor or `/tools` cycles the global completed-tool view through folded, expanded, and hidden. The editor wrapper follows the effective `app.tools.expand` binding, while picker/tree bindings remain unchanged. Clicking a folded tool still toggles its per-row expansion.
+
+`packages/pi-thinking-views` independently extends Ctrl+T (`app.thinking.toggle`) to folded, expanded, and hidden reasoning. Folded uses Pi's default label; hidden uses the native empty-label contract so no spacer remains. The extension composes the existing editor factory and forwards the actual key event only when native collapsed/visible state must change. Tool views, assistant text, notices, and the working spinner are not affected. Neither thinking views nor tool views adds a persistent footer indicator: mode selections show feedback for two seconds, with repeated selections restarting that extension's timeout. Startup/reload stays quiet, and shutdown cancels pending feedback. Both editor-wrapper load orders and cleanup are verified in `tests/thinking-tool-views.test.ts`. Running tools stay visible. Compact labels strip terminal controls and truncate by visible column width. Rendering state and mode changes are display-only and never change tool execution or persisted messages. See the [package README](../packages/pi-tool-views/README.md) for migration and image limitations.

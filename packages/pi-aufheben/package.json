@@ -20,7 +20,7 @@
   },
   "dependencies": { "yaml": "^2.8.1", "zod": "^4.6.6" },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "1.4.0",
+    "@earendil-works/pi-coding-agent": "1.5.2",
     "@types/node": "^24.10.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.12"

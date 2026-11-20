@@ -1,6 +1,6 @@
 # Pi extensions
 
-This repository contains eight personal Pi packages. It keeps local extension code, package choices, examples, and verification commands together.
+This repository contains eleven personal Pi packages. It keeps local extension code, package choices, examples, and verification commands together.
 
 ## Included packages
 
@@ -9,6 +9,9 @@ This repository contains eight personal Pi packages. It keeps local extension co
 | `packages/pi-aufheben` | `/aufheben`, `/aufheben-next`, `/aufheben-pause`, `/aufheben-status`, `/aufheben-stop` | Develop research ideas with persistent Thesizer/Antithesizer partners and the current main model as Synthesizer. |
 | `packages/pi-council` | `/council`, `/council-next`, `/council-check`, `/council-cancel`, `/council-reviews`, `/council-copy` | Start fresh or continue independent Reviewer histories; the current main-session model synthesizes as Chair. |
 | `packages/pi-codex-fast` | `/fast [on\|off\|status]` | Request Codex Fast mode for eligible ChatGPT OAuth requests, with branch-local persistence. |
+| `packages/pi-tool-views` | `/tools [folded\|expanded\|hidden]`, Ctrl+O | Fold completed tools while preserving native shaded backgrounds and rich renderers. |
+| `packages/pi-thinking-views` | Ctrl+T | Cycle reasoning through folded, expanded, and fully hidden independently of tool views. |
+| `packages/pi-message-timestamps` | None | Show session-entry times below completed user and assistant text. |
 | `packages/pi-prompt-stash` | `/stash [save\|clear\|shortcut [key]]` | Save unfinished editor drafts and restore them from a searchable local picker without losing current input. |
 | `packages/pi-usage-codex` | `/usage-codex-status` | Show Codex subscription quota windows (Spark when selected) and polling diagnostics. |
 | `packages/pi-usage-deepseek` | `/usage-deepseek-status` | Show the current DeepSeek account balance and polling diagnostics. |
@@ -22,6 +25,9 @@ This repository contains eight personal Pi packages. It keeps local extension co
 packages/pi-aufheben/                Persistent dialectical research workflow
 packages/pi-council/                 Independent reviews with main-session Chair
 packages/pi-codex-fast/              Session-scoped Codex Fast request toggle
+packages/pi-tool-views/              Foldable tools with native-style shaded backgrounds
+packages/pi-thinking-views/          Independent three-state thinking display
+packages/pi-message-timestamps/      Completed-message session-entry timestamps
 packages/pi-prompt-stash/            Persistent editor draft stash and picker
 packages/pi-usage/                   Local historical usage table
 packages/pi-usage-codex/             Personal Codex quota status package
@@ -31,20 +37,20 @@ packages/pi-council/.pi/             Example Council configuration
 package.json                         Root Pi package and development commands
 ```
 
-The root Pi manifest loads all eight local packages. `.pi/settings.json` loads only that root package when Pi runs in this repository.
+The root Pi manifest loads all eleven local packages. `.pi/settings.json` loads only that root package when Pi runs in this repository.
 
 ## Setup
 
 The default checkout location is `~/git/pi-extensions`. Installation examples below use that path; adjust it if your checkout lives elsewhere.
 
-Node.js 22.19 or newer is required. Only the latest Pi release is targeted, currently v1.4.0. Development dependencies pin that version for reproducible checks; older Pi versions are not maintained. Install the local package dependencies:
+Node.js 22.19 or newer is required. This repository targets Pi v1.5.2. Development dependencies pin that version for reproducible checks; older Pi versions are not maintained. Install the local package dependencies:
 
 ```bash
 cd ~/git/pi-extensions
 npm install
 ```
 
-Start Pi in this repository and trust the project when prompted. Pi loads the eight local extensions.
+Start Pi in this repository and trust the project when prompted. Pi loads the eleven local extensions.
 
 ### Codex Fast mode
 
@@ -84,6 +90,18 @@ Run `/council-check` to validate configuration and model availability without in
 
 `/council-cancel` cancels owned work without aborting unrelated tasks. `/council-reviews` redisplays the latest report, and `/council-copy` copies the latest completed Chair answer on the active branch. See [`packages/pi-council/README.md`](packages/pi-council/README.md) for structured concern tracking, concurrency, deadlines, recovery, privacy, and migration from `pi-reviewer-chair`.
 
+### Tool views
+
+**Ctrl+O** in the main editor or `/tools` cycles completed built-in tool text through folded, expanded, and hidden modes. Folded cards retain Pi's shaded backgrounds; expanded views delegate to native renderers, including edit diffs and syntax highlighting. Running tools remain visible. No persistent footer indicator is added; selecting a mode shows two-second feedback only. The extension follows the effective `app.tools.expand` binding, replaces only its main-editor behavior, and leaves picker/tree shortcuts unchanged. This extension changes presentation only, not tool execution or model context. Remove `npm:pi-foldable-tools` before reloading to avoid competing overrides and `/tools` commands. See [`packages/pi-tool-views/README.md`](packages/pi-tool-views/README.md) for controls, migration, and the host-owned image limitation in hidden mode.
+
+### Thinking views
+
+**Ctrl+T** in the main editor cycles thinking through folded (`Thinking...`), expanded reasoning, and fully hidden, independently of Ctrl+O's tool views. Normal answers, tool output, and the working spinner remain visible. No persistent footer indicator is added; a successful cycle shows two-second feedback only. The extension follows the effective `app.thinking.toggle` key and delegates native visibility changes, preserving Pi's saved collapsed/visible preference. The extra hidden state resets to folded after reload; messages, signatures, model context, and reasoning budgets are unchanged. See [`packages/pi-thinking-views/README.md`](packages/pi-thinking-views/README.md) for editor compatibility and lifecycle details.
+
+### Message timestamps
+
+Completed user and assistant text shows its session-entry time below the body in a dim `YYYY-MM-DD HH:mm:ss` line, using the local time zone. Assistant timestamps stay hidden during streaming. Restored sessions use their saved entry times; no message content or additional session data is written. See [`packages/pi-message-timestamps/README.md`](packages/pi-message-timestamps/README.md) for live-rendering behavior and text-block limitations.
+
 ### Prompt stash
 
 Press **Ctrl+Shift+S** to save and clear an unfinished editor prompt. `/stash` opens a searchable newest-first list with a multiline preview; Enter restores, `d` confirms deletion, and Escape closes it. A different nonempty editor draft is automatically stashed before restoration. `/stash clear` confirms bulk deletion; `/stash shortcut alt+s` changes the shortcut after `/reload`.
@@ -106,6 +124,9 @@ To load the extensions independently outside this repository, install each packa
 pi install ~/git/pi-extensions/packages/pi-aufheben
 pi install ~/git/pi-extensions/packages/pi-council
 pi install ~/git/pi-extensions/packages/pi-codex-fast
+pi install ~/git/pi-extensions/packages/pi-tool-views
+pi install ~/git/pi-extensions/packages/pi-thinking-views
+pi install ~/git/pi-extensions/packages/pi-message-timestamps
 pi install ~/git/pi-extensions/packages/pi-prompt-stash
 pi install ~/git/pi-extensions/packages/pi-usage
 pi install ~/git/pi-extensions/packages/pi-usage-codex
@@ -123,9 +144,9 @@ Validate all personal packages after changing code or configuration examples:
 npm run check
 ```
 
-Checks cover TypeScript, prompt stash persistence/locking/restoration and picker behavior, provider parsing, polling/backoff/cancellation, Council preflight and concurrency, Aufheben rounds/intervention/recovery, real-SDK integration with fake providers, active-session cleanup, branch-aware restoration, package-manifest consistency, and package contents. Cross-package integration tests live in `tests/`; each package keeps its own API/unit tests. GitHub Actions runs the suite on Node.js 22, 24, and 26 against the current Pi target and audits dependencies for high-severity advisories. When a new Pi release becomes the target, update the root and all package development dependencies, regenerate the lockfile, and run the full checks. A separate older-version compatibility matrix is not maintained. Example tests validate structural invariants rather than exact model IDs or reviewer counts.
+Checks cover TypeScript, prompt stash persistence/locking/restoration and picker behavior, provider parsing, polling/backoff/cancellation, Council preflight and concurrency, Aufheben rounds/intervention/recovery, real-SDK integration with fake providers, active-session cleanup, branch-aware restoration, message timestamps and independent tool/thinking views with real transcript rendering and composed editor controls, package-manifest consistency, and package contents. Cross-package integration tests live in `tests/`; each package keeps its own API/unit tests. GitHub Actions runs the suite on Node.js 22, 24, and 26 against the current Pi target and audits dependencies for high-severity advisories. When a new Pi release becomes the target, update the root and all package development dependencies, regenerate the lockfile, and run the full checks. A separate older-version compatibility matrix is not maintained. Example tests validate structural invariants rather than exact model IDs or reviewer counts.
 
-Run `npm audit` from the repository root to check both runtime and development dependencies. Zod's minimum version includes its constrained-collection validation fix. Until Pi updates its pinned Undici dependency, the root development install overrides Undici to `^8.12.2`; the lockfile records the tested resolution. Run development installs and checks from this root so that override applies. These repository updates do **not** patch the separately installed Pi CLI or dependencies supplied by it. Update the host through Pi's supported installer/update flow when a patched release is available; do not edit its managed installation in place.
+Run `npm audit` from the repository root to check both runtime and development dependencies. Zod's minimum version includes its constrained-collection validation fix. The root development install retains an Undici security floor of `^8.12.2`; Pi 1.5.2 itself pins Undici 8.12.3, and the lockfile records the tested resolution. Run development installs and checks from this root so that override applies. These repository updates do **not** patch the separately installed Pi CLI or dependencies supplied by it. Update the host through Pi's supported installer/update flow when a patched release is available; do not edit its managed installation in place.
 
 Usage requests are cancelled on session shutdown or reload. Codex also cancels obsolete requests when switching between regular and Spark quotas. No live credentials are needed for automated tests.
 
