@@ -22,7 +22,7 @@ The repository's root package loads this extension automatically. For independen
 pi install ~/git/pi-extensions/packages/pi-thinking-views
 ```
 
-Run `/reload` afterward. Requires Node.js 22.19+ and Pi 1.5.2. No configuration file, extra command, network access, or model call is needed.
+Run `/reload` afterward. Requires Node.js 22.19+ and Pi 1.6.0. No configuration file, extra command, network access, or model call is needed.
 
 ## Keys and preferences
 

@@ -6,7 +6,7 @@ This is an independently implemented package. The expandable provider/model Tabl
 
 ## Installation
 
-Requires Node.js 22.19+ and Pi 1.5.2. The root repository manifest loads this package automatically. For standalone use:
+Requires Node.js 22.19+ and Pi 1.6.0. The root repository manifest loads this package automatically. For standalone use:
 
 ```bash
 pi install ~/git/pi-extensions/packages/pi-usage

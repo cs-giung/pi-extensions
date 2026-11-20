@@ -1,6 +1,6 @@
 # Message timestamps
 
-Display the session-entry time below completed user and assistant text in Pi 1.5.2. No commands, model calls, network access, or additional session records are needed.
+Display the session-entry time below completed user and assistant text in Pi. No commands, model calls, network access, or additional session records are needed.
 
 ```text
 Your message
@@ -22,7 +22,7 @@ The repository's root package loads this extension automatically. Reload Pi afte
 pi install ~/git/pi-extensions/packages/pi-message-timestamps
 ```
 
-Do not also load a second copy of the extension. Node.js 22.19+ and Pi 1.5.2 are required; older host versions are not maintained.
+Do not also load a second copy of the extension. Node.js 22.19+ and Pi 1.6.0 are required; older host versions are not maintained.
 
 ## Behavior
 
@@ -35,7 +35,7 @@ Do not also load a second copy of the extension. Node.js 22.19+ and Pi 1.5.2 are
 
 ## Implementation and compatibility
 
-`registerMarkdownTransformer()` receives session metadata for restored components, but not live ones. In Pi 1.5.2, each newly created message component snapshots the registered transformers after the `message_start` handlers. This extension registers a per-message closure at that boundary and resolves its session entry by append position and role after `message_end`. It does not guess from text, so identical prompts/answers do not share timestamps, and finalized message-object replacements are supported.
+`registerMarkdownTransformer()` receives session metadata for restored components, but not live ones. Each newly created message component snapshots the registered transformers after the `message_start` handlers. This extension registers a per-message closure at that boundary and resolves its session entry by append position and role after `message_end`. It does not guess from text, so identical prompts/answers do not share timestamps, and finalized message-object replacements are supported.
 
 A zero-height widget below the editor obtains the public TUI invalidation handle without replacing the footer or editor. A short, session-scoped timer waits for actual persistence, then invalidates cached Markdown once. This handles another extension delaying `message_end`, even if the user row was already rendered. The timer stops when persistence is found and is cancelled on shutdown/reload/session replacement. No background resources start during extension discovery.
 

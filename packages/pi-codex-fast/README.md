@@ -1,6 +1,6 @@
 # pi-codex-fast
 
-Session-scoped Codex Fast mode requests for Pi 1.5.2. Disabled by default; no model calls are made by the extension itself.
+Session-scoped Codex Fast mode requests for Pi 1.6.0. Disabled by default; no model calls are made by the extension itself.
 
 ## Install
 
@@ -34,7 +34,7 @@ The footer displays **Fast requested**, not confirmed activation. **Fast paused*
 - Does not maintain a model allowlist: the server determines eligibility and may reject, ignore, or downgrade the requested tier. The footer only describes request intent. A successful toggle does not validate your account or model. No automatic retry, account switch, or silent fallback is added.
 - Preserves the complete request except `service_tier` while enabled; reasoning effort and model selection do not change. `/thinking low` is not Fast mode. While disabled it does not remove or override a tier supplied elsewhere, so `/fast off` cannot disable another extension's priority setting.
 - Does not read or modify Codex CLI `config.toml`, Pi settings, or the managed Pi installation. It does not implement Ultrafast mode or recalculate Pi's recorded cost estimates. Historical costs are not a subscription invoice.
-- Pi 1.5.2's payload hook exposes the selected model, not the actual request provider. The payload's model must match the selected model ID; differently routed payloads are skipped. Do not combine this with an extension that secretly routes the same model ID to another provider, replaces authentication, or overwrites the tier afterward. Such changes cannot be reliably detected here.
+- Pi's payload hook exposes the selected model, not the actual request provider. The payload's model must match the selected model ID; differently routed payloads are skipped. Do not combine this with an extension that secretly routes the same model ID to another provider, replaces authentication, or overwrites the tier afterward. Such changes cannot be reliably detected here.
 - Applies only to requests that invoke this session's Pi payload hook. It does not propagate the preference to independent Council/Aufheben child sessions, direct provider calls, or requests that bypass that hook. An already dispatched request is not changed by a toggle.
 
 ## Persistence
@@ -43,7 +43,7 @@ Stores only a versioned boolean in custom session entries, outside model context
 
 ## Development
 
-Run from the repository root so dependency overrides apply:
+Run from the repository root:
 
 ```bash
 npm run check

@@ -43,11 +43,11 @@ The root Pi manifest loads all eleven local packages. `.pi/settings.json` loads 
 
 The default checkout location is `~/git/pi-extensions`. Installation examples below use that path; adjust it if your checkout lives elsewhere.
 
-Node.js 22.19 or newer is required. This repository targets Pi v1.5.2. Development dependencies pin that version for reproducible checks; older Pi versions are not maintained. Install the local package dependencies:
+Node.js 22.19 or newer is required. This repository targets Pi v1.6.0. Development dependencies pin that version for reproducible checks; older Pi versions are not maintained. Install the local package dependencies:
 
 ```bash
 cd ~/git/pi-extensions
-npm install
+npm ci
 ```
 
 Start Pi in this repository and trust the project when prompted. Pi loads the eleven local extensions.
@@ -146,7 +146,7 @@ npm run check
 
 Checks cover TypeScript, prompt stash persistence/locking/restoration and picker behavior, provider parsing, polling/backoff/cancellation, Council preflight and concurrency, Aufheben rounds/intervention/recovery, real-SDK integration with fake providers, active-session cleanup, branch-aware restoration, message timestamps and independent tool/thinking views with real transcript rendering and composed editor controls, package-manifest consistency, and package contents. Cross-package integration tests live in `tests/`; each package keeps its own API/unit tests. GitHub Actions runs the suite on Node.js 22, 24, and 26 against the current Pi target and audits dependencies for high-severity advisories. When a new Pi release becomes the target, update the root and all package development dependencies, regenerate the lockfile, and run the full checks. A separate older-version compatibility matrix is not maintained. Example tests validate structural invariants rather than exact model IDs or reviewer counts.
 
-Run `npm audit` from the repository root to check both runtime and development dependencies. Zod's minimum version includes its constrained-collection validation fix. The root development install retains an Undici security floor of `^8.12.2`; Pi 1.5.2 itself pins Undici 8.12.3, and the lockfile records the tested resolution. Run development installs and checks from this root so that override applies. These repository updates do **not** patch the separately installed Pi CLI or dependencies supplied by it. Update the host through Pi's supported installer/update flow when a patched release is available; do not edit its managed installation in place.
+Run `npm audit` from the repository root to check both runtime and development dependencies. The lockfile covers the development install, not the separately installed Pi CLI. Update the host through Pi's supported installer/update flow.
 
 Usage requests are cancelled on session shutdown or reload. Codex also cancels obsolete requests when switching between regular and Spark quotas. No live credentials are needed for automated tests.
 

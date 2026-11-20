@@ -9,6 +9,6 @@
 ## Verification
 
 - Use `~/git/pi-extensions` as the default checkout path in installation examples.
-- Run development installs and checks from the repository root so its dependency overrides apply.
+- Run development installs and checks from the repository root so they use the shared lockfile.
 - Run `npm run check`, `npm audit --audit-level=high`, and `git diff --check` before committing changes.
 - Do not include credentials, personal Pi settings, or generated session files in commits.

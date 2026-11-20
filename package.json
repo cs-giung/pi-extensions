@@ -40,13 +40,10 @@
     "zod": "^4.6.6"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "1.5.2",
+    "@earendil-works/pi-coding-agent": "1.6.0",
     "@types/node": "^24.10.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.12"
-  },
-  "overrides": {
-    "undici": "^8.12.2"
   },
   "engines": {
     "node": ">=22.19.0"

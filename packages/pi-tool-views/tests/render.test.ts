@@ -6,7 +6,7 @@ import { createReadToolDefinition, createBashToolDefinition, createPowerShellToo
   initTheme, ToolExecutionComponent, type ToolRenderers, type AgentToolResult } from "@earendil-works/pi-coding-agent";
 import { Container, Text, stripTerminalSequences, visibleWidth, type TUI } from "@earendil-works/pi-tui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { callLabel, oneLine, parseMode, resultLabel, ToolViews } from "../src/render.js";
+import { BoundedContainer, callLabel, oneLine, parseMode, resultLabel, ToolViews } from "../src/render.js";
 
 const themeModule = await import(new URL("./modes/interactive/theme/theme.js", import.meta.resolve("@earendil-works/pi-coding-agent")).href);
 let dir: string;
@@ -94,6 +94,18 @@ describe("native-compatible tool views", () => {
     component.updateResult({ ...result("Permission denied"), isError: true });
     expect(plain(component)).toContain("ERROR Permission denied");
     views.mode = "expanded"; component.invalidate(); expect(plain(component)).toContain("Permission denied");
+  });
+
+  it("reuses clipped rows until their width or child output changes", () => {
+    const row = new BoundedContainer();
+    let source = Object.freeze(["a long tool line"]);
+    row.addChild({ render: () => source, invalidate() {} });
+    const narrow = row.render(5);
+    expect(visibleWidth(narrow[0]!)).toBeLessThanOrEqual(5);
+    expect(row.render(5)).toBe(narrow);
+    expect(row.render(80)).toEqual(["a long tool line"]);
+    source = Object.freeze(["updated"]);
+    expect(row.render(80)).toEqual(["updated"]);
   });
 
   it("uses the current theme and clips wide/Unicode headers even at zero and one columns", () => {

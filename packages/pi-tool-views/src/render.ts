@@ -64,10 +64,17 @@ export function resultLabel(name: string, result: AgentToolResult, context: Pick
   return label;
 }
 
-class BoundedContainer extends Container {
-  override render(width: number): string[] {
+export class BoundedContainer extends Container {
+  private clipped?: { source: readonly string[]; width: number; lines: readonly string[] };
+
+  override render(width: number): readonly string[] {
     if (width <= 0) return [];
-    return super.render(width).map((line) => truncateToWidth(line, width));
+    const source = super.render(width);
+    // Pi reuses the source array on unchanged frames. Clip only when needed.
+    if (this.clipped?.source !== source || this.clipped.width !== width) {
+      this.clipped = { source, width, lines: source.map((line) => truncateToWidth(line, width)) };
+    }
+    return this.clipped.lines;
   }
 }
 

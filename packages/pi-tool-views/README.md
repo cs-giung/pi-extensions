@@ -1,6 +1,6 @@
 # Tool views
 
-Fold, expand, or hide completed built-in tool text in Pi 1.5.2 **without losing Pi's shaded tool backgrounds**. This is a presentation-only replacement for `pi-foldable-tools`, not a tool implementation override.
+Fold, expand, or hide completed built-in tool text in Pi **without losing Pi's shaded tool backgrounds**. This is a presentation-only replacement for `pi-foldable-tools`, not a tool implementation override.
 
 ## Controls
 
@@ -36,7 +36,7 @@ pi remove npm:pi-foldable-tools
 pi install ~/git/pi-extensions/packages/pi-tool-views
 ```
 
-Then run `/reload` (or restart Pi). Do not leave the old tool override loaded: otherwise its renderers, execution overrides, and `/tools` command remain in the chain. Also remove separately configured copies if you installed that package in more than one scope. Node.js 22.19+ and Pi 1.5.2 are required.
+Then run `/reload` (or restart Pi). Do not leave the old tool override loaded: otherwise its renderers, execution overrides, and `/tools` command remain in the chain. Also remove separately configured copies if you installed that package in more than one scope. Node.js 22.19+ and Pi 1.6.0 are required.
 
 ## Implementation boundary
 
